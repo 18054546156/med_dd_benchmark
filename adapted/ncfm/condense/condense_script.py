@@ -9,7 +9,15 @@ def main_worker(args):
 
     aug, _ = diffaug(args)
     
-    condenser = Condenser(args, nclass_list=args.class_list, nchannel=args.nch, hs=args.size, ws=args.size, device='cuda')
+    # Condenser 使用 NCFM 当前分布式设备；CPU/Gloo smoke 不能硬编码 CUDA。
+    condenser = Condenser(
+        args,
+        nclass_list=args.class_list,
+        nchannel=args.nch,
+        hs=args.size,
+        ws=args.size,
+        device=args.device,
+    )
     for local_rank in range(args.local_world_size):
         if  args.local_rank == local_rank:
             condenser.load_condensed_data(loader_real, init_type=args.init,load_path=args.load_path)

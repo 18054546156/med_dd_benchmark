@@ -38,7 +38,8 @@ class TimingTracker:
 
 def accuracy(output, target, topk=(1,)):
     """Computes the precision@k for the specified values of k"""
-    maxk = max(topk)
+    # 医疗数据集可能少于 5 类；top-k 不能超过 logits 的类别维度。
+    maxk = min(max(topk), output.size(1))
     batch_size = target.size(0)
 
     _, pred = output.topk(maxk, 1, True, True)
@@ -47,7 +48,8 @@ def accuracy(output, target, topk=(1,)):
 
     res = []
     for k in topk:
-        correct_k = correct[:k].reshape(-1).float().sum(0, keepdim=True)
+        effective_k = min(k, output.size(1))
+        correct_k = correct[:effective_k].reshape(-1).float().sum(0, keepdim=True)
         res.append(correct_k.mul_(100.0 / batch_size))
 
     return res

@@ -1,0 +1,62 @@
+# NCFM Kvasir official-entry smoke configuration.
+distibution_train:
+  backend: nccl
+  init_method: env://
+  workers: 0
+dataset:
+  dataset: kvasir
+  nclass: 8
+  size: 128
+  data_dir: ../../data/prepared
+  load_memory: false
+  batch_real: 8
+  nch: 3
+network:
+  net_type: convnet
+  norm_type: instance
+  depth: 5
+  width: 1.0
+train:
+  evaluation_epochs: 1
+  epoch_print_freq: 1
+  epoch_eval_interval: 1
+  pertrain_epochs: 1
+  batch_size: 32
+  lr: 0.01
+  adamw_lr: 0.001
+  eval_optimizer: adamw
+  momentum: 0.9
+  weight_decay: 0.0005
+  seed: 0
+  model_num: 1
+augmentation:
+  mixup: cut
+  beta: 1.0
+  mix_p: 0.5
+  rrc: true
+  dsa: true
+  dsa_strategy: color_crop_cutout_flip_scale
+  aug_type: color_crop_cutout
+optimization:
+  optimizer: adamw
+  lr_scale_adam: 0.1
+  lr_img: 0.01
+  mom_img: 0.5
+  lr_sampling_net: 0.001
+save_path:
+  save_dir: ../../results/official_smoke/ncfm/kvasir
+  pretrain_dir: ../../results/official_smoke/ncfm_pretrained
+condense:
+  ipc: 1
+  num_premodel: 1
+  niter: 1
+  iter_calib: 1
+  calib_weight: 1
+  sampling_net: false
+  num_freqs: 16
+  dis_metrics: NCFM
+  factor: 2
+  alpha_for_loss: 0.5
+  beta_for_loss: 0.5
+  decode_type: single
+  teacher_model_epoch: 1

@@ -1,7 +1,11 @@
 import os
 import sys
+from pathlib import Path
 
-sys.path.append("../")
+# 从任意工作目录启动时都优先使用 HoP-TM 自己的 utils，避免被其他算法同名模块遮蔽。
+_HOP_ROOT = Path(__file__).resolve().parents[1]
+if str(_HOP_ROOT) not in sys.path:
+    sys.path.insert(0, str(_HOP_ROOT))
 
 import argparse
 import numpy as np
@@ -10,7 +14,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.utils
 from tqdm import tqdm
-from utils.utils_baseline import get_dataset, get_network, get_eval_pool, evaluate_synset, get_time, DiffAugment, ParamDiffAug
+from utils.utils_baseline import get_dataset, get_network, get_eval_pool, get_daparam, evaluate_synset, get_time, DiffAugment, ParamDiffAug
 import wandb
 import copy
 import random
@@ -92,6 +96,10 @@ def main(args):
 
     args.dsa_param = dsa_params
     args.zca_trans = zca_trans
+
+    # wandb 重建 Namespace 后补回 DC 评估所需的增强参数，避免 dsa=False 时属性丢失。
+    if not args.dsa:
+        args.dc_aug_param = get_daparam(args.dataset, args.model, args.model, args.ipc)
 
     if args.batch_syn is None:
         args.batch_syn = num_classes * args.ipc
@@ -247,9 +255,12 @@ def main(args):
 
         if it in eval_it_pool and (save_this_it or it % 1000 == 0):
             with torch.no_grad():
-                image_save = image_syn.cuda()
+                # 保存阶段沿用当前设备，CPU smoke 不应无条件初始化 CUDA。
+                image_save = image_syn.to(args.device)
 
-                save_dir = os.path.join(".", "logged_files", args.dataset, wandb.run.name)
+                # 离线 wandb 可能没有 run.name，使用 run.id 保证 smoke 结果可以保存。
+                run_name = getattr(wandb.run, "name", None) or getattr(wandb.run, "id", "offline")
+                save_dir = os.path.join(".", "logged_files", args.dataset, run_name)
 
                 if not os.path.exists(save_dir):
                     os.makedirs(save_dir)
@@ -456,16 +467,37 @@ def main(args):
     wandb.finish()
 
 
+def _parse_bool_arg(value):
+    """解析配置覆盖参数中的布尔值，避免 bool('False') 被误判为 True。"""
+    if isinstance(value, bool):
+        return value
+    normalized = str(value).strip().lower()
+    if normalized in {'true', '1', 'yes', 'y'}:
+        return True
+    if normalized in {'false', '0', 'no', 'n'}:
+        return False
+    raise argparse.ArgumentTypeError('expected a boolean value')
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Parameter Processing')
 
     parser.add_argument("--cfg", type=str, default="")
-    args = parser.parse_args()
+    # 先只解析配置文件参数，但暂存其它命令行覆盖项；原始实现直接
+    # parse_args() 会在动态参数注册前拒绝 --Iteration、--syn_steps 等参数。
+    args, _ = parser.parse_known_args()
 
     cfg.merge_from_file(args.cfg)
     for key, value in cfg.items():
         arg_name = '--' + key
-        parser.add_argument(arg_name, type=type(value), default=value)
+        if isinstance(value, bool):
+            value_type = _parse_bool_arg
+        elif value is None:
+            # None 只作为“未限制数量”的默认值；如果用户覆盖，按整数解析。
+            value_type = int if key in {'max_files', 'max_experts'} else str
+        else:
+            value_type = type(value)
+        parser.add_argument(arg_name, type=value_type, default=value)
     args = parser.parse_args()
     main(args)
 

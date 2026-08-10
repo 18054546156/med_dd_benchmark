@@ -232,7 +232,8 @@ def main(args):
 
         if it in eval_it_pool and (save_this_it or it % 1000 == 0):
             with torch.no_grad():
-                image_save = image_syn.cuda()
+                # 保存阶段沿用当前设备，CPU smoke 不应无条件初始化 CUDA。
+                image_save = image_syn.to(args.device)
 
                 # 离线 wandb 可能没有 run.name，使用 run.id 保证最小 smoke 也能落盘。
                 run_name = getattr(wandb.run, "name", None) or getattr(wandb.run, "id", "offline")

@@ -90,6 +90,8 @@ def main():
     parser.add_argument('--lambda_1', type=float, default=0.04, help='break outlooper')
     parser.add_argument('--lambda_2', type=float, default=0.03, help='break innerlooper')
     parser.add_argument('--gpu_id', type=str, default='0', help='dataset path')
+    parser.add_argument('--smoke', action='store_true',
+                        help='使用一次内外更新和配置中的评估轮数完成入口冒烟测试')
 
     args = parser.parse_args()
     logger = build_logger('.', cfgname=str(args.lambda_1) + "_" + str(args.lambda_2) + "_" + str(
@@ -180,7 +182,8 @@ def main():
                         '-------------------------\nEvaluation\nmodel_train = %s, model_eval = %s, iteration = %d' % (
                             args.model, model_eval, it))
                     if args.dsa:
-                        args.epoch_eval_train = 1000
+                        if not args.smoke:
+                            args.epoch_eval_train = 1000
                         args.dc_aug_param = None
                         logger.info('DSA augmentation strategy: \n' + args.dsa_strategy)
                         logger.info('DSA augmentation parameters: \n' + str(args.dsa_param.__dict__))
@@ -190,10 +193,11 @@ def main():
                                                         args.ipc)  
                         logger.info('DC augmentation parameters: \n' + str(args.dc_aug_param))
 
-                    if args.dsa or args.dc_aug_param['strategy'] != 'none':
-                        args.epoch_eval_train = 1000  # Training with data augmentation needs more epochs.
-                    else:
-                        args.epoch_eval_train = 600
+                    if not args.smoke:
+                        if args.dsa or args.dc_aug_param['strategy'] != 'none':
+                            args.epoch_eval_train = 1000  # Training with data augmentation needs more epochs.
+                        else:
+                            args.epoch_eval_train = 600
 
                     accs = []
                     for it_eval in range(args.num_eval):
@@ -318,6 +322,11 @@ def main():
                     else:
                         acc_watcher.pop(0)
 
+                # smoke 只验证官方 forward/backward/update/save 链路，避免稳定性监视器
+                # 为获得统计量而重复数十次更新；默认实验仍使用原始 while 条件。
+                if args.smoke:
+                    break
+
                 ''' update network '''
                 image_syn_train, label_syn_train = copy.deepcopy(image_syn.detach()), copy.deepcopy(
                     label_syn.detach())  # avoid any unaware modification
@@ -350,6 +359,9 @@ def main():
                             break
                         else:
                             acc_inner_watcher.pop(0)
+
+                    if args.smoke:
+                        break
 
                     epoch('test', trainloader, net, optimizer_net, criterion, args, aug=True if args.dsa else False)
 

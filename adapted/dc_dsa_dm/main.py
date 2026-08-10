@@ -30,10 +30,15 @@ def main():
     parser.add_argument('--data_path', type=str, default='data', help='dataset path')
     parser.add_argument('--save_path', type=str, default='result', help='path to save results')
     parser.add_argument('--dis_metric', type=str, default='ours', help='distance metric')
+    parser.add_argument('--device', choices=['auto', 'cuda', 'cpu'], default='auto',
+                        help='选择运行设备；auto 保持官方的 CUDA 优先行为')
+    parser.add_argument('--fast_eval', action='store_true',
+                        help='医疗 smoke 评估时使用命令行指定的 epoch_eval_train')
 
     args = parser.parse_args()
     args.outer_loop, args.inner_loop = get_loops(args.ipc)
-    args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    # 允许 smoke 在其他 GPU 任务占用显存时显式退回 CPU。
+    args.device = 'cuda' if args.device != 'cpu' and torch.cuda.is_available() else 'cpu'
     args.dsa_param = ParamDiffAug()
     args.dsa = True if args.method == 'DSA' else False
 
@@ -110,7 +115,9 @@ def main():
                 for model_eval in model_eval_pool:
                     print('-------------------------\nEvaluation\nmodel_train = %s, model_eval = %s, iteration = %d'%(args.model, model_eval, it))
                     if args.dsa:
-                        args.epoch_eval_train = 1000
+                        # 保持官方默认的 1000 轮评估；smoke 可显式启用 fast_eval。
+                        if not args.fast_eval:
+                            args.epoch_eval_train = 1000
                         args.dc_aug_param = None
                         print('DSA augmentation strategy: \n', args.dsa_strategy)
                         print('DSA augmentation parameters: \n', args.dsa_param.__dict__)
@@ -118,10 +125,12 @@ def main():
                         args.dc_aug_param = get_daparam(args.dataset, args.model, model_eval, args.ipc) # This augmentation parameter set is only for DC method. It will be muted when args.dsa is True.
                         print('DC augmentation parameters: \n', args.dc_aug_param)
 
-                    if args.dsa or args.dc_aug_param['strategy'] != 'none':
-                        args.epoch_eval_train = 1000  # Training with data augmentation needs more epochs.
-                    else:
-                        args.epoch_eval_train = 300
+                    if not args.fast_eval:
+                        if args.dsa or args.dc_aug_param['strategy'] != 'none':
+                            args.epoch_eval_train = 1000  # Training with data augmentation needs more epochs.
+                        else:
+                            args.epoch_eval_train = 300
+                    # fast_eval 保留命令行传入的 epoch_eval_train，供官方入口 smoke 使用。
 
                     accs = []
                     for it_eval in range(args.num_eval):

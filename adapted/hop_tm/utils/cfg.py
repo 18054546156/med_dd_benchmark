@@ -15,6 +15,10 @@ def show_cfg(cfg):
 
 CFG = CN()
 
+# 医疗数据配置会额外携带保存目录、实验标记等字段；允许配置文件
+# 注册这些字段，再由蒸馏入口统一转换为 argparse 参数。
+CFG.set_new_allowed(True)
+
 # Configuration Settings
 
 # dataset

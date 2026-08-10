@@ -17,6 +17,23 @@ def init_script(args):
     torch.backends.cuda.matmul.allow_tf32 = args.tf32
     torch.backends.cudnn.allow_tf32 = args.tf32
 
+    # Windows 版 PyTorch 通常没有 NCCL；单卡 smoke 使用 Gloo，Linux
+    # 且 NCCL 可用时仍沿用 NCFM 官方配置，避免改变多卡训练语义。
+    if args.backend == "nccl" and not dist.is_nccl_available():
+        args.backend = "gloo"
+
+    # NCFM 原始脚本通常由 torchrun 启动；Windows 单卡直接执行 python
+    # 时没有 env:// 所需变量，这里补齐 world-size=1 的本地 rendezvous。
+    if args.init_method == "env://" and "RANK" not in os.environ:
+        os.environ["NCFM_SINGLE_PROCESS"] = "1"
+        os.environ.setdefault("RANK", "0")
+        os.environ.setdefault("WORLD_SIZE", "1")
+        os.environ.setdefault("LOCAL_RANK", "0")
+        os.environ.setdefault("LOCAL_WORLD_SIZE", "1")
+        # 覆盖外部环境可能注入的容器地址，确保单卡使用本机 rendezvous。
+        os.environ["MASTER_ADDR"] = "127.0.0.1"
+        os.environ["MASTER_PORT"] = "29501"
+
     rank, world_size, local_rank, local_world_size, device = (
         initialize_distribution_training(args.backend, args.init_method)
     )

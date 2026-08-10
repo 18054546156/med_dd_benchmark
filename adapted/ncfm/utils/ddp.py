@@ -7,17 +7,40 @@ from collections import OrderedDict
 
 
 def initialize_distribution_training(backend="nccl", init_method="env://"):
-    dist.init_process_group(
-        backend=backend, init_method=init_method, timeout=timedelta(seconds=3000)
-    )
+    if os.environ.get("NCFM_SINGLE_PROCESS") == "1":
+        # Windows 某些 PyTorch 构建没有 libuv；world-size=1 使用显式
+        # TCPStore 并关闭 libuv，避免 env:// 在 rendezvous 阶段失败。
+        store = dist.TCPStore(
+            os.environ.get("MASTER_ADDR", "127.0.0.1"),
+            int(os.environ.get("MASTER_PORT", "29501")),
+            world_size=1,
+            is_master=True,
+            timeout=timedelta(seconds=3000),
+            use_libuv=False,
+        )
+        dist.init_process_group(
+            backend=backend,
+            store=store,
+            rank=0,
+            world_size=1,
+            timeout=timedelta(seconds=3000),
+        )
+    else:
+        dist.init_process_group(
+            backend=backend, init_method=init_method, timeout=timedelta(seconds=3000)
+        )
     rank = dist.get_rank()
     world_size = dist.get_world_size()
     # Get local rank from environment variable
-    local_rank = int(os.environ["LOCAL_RANK"])
-    local_world_size = int(os.environ["WORLD_SIZE"])
-    # Set the current GPU for this process
-    torch.cuda.set_device(local_rank)
-    device = torch.device(f"cuda:{local_rank}")
+    local_rank = int(os.environ.get("LOCAL_RANK", "0"))
+    local_world_size = int(os.environ.get("LOCAL_WORLD_SIZE", os.environ.get("WORLD_SIZE", "1")))
+    if torch.cuda.is_available():
+        # Set the current GPU for this process when CUDA is available.
+        torch.cuda.set_device(local_rank)
+        device = torch.device(f"cuda:{local_rank}")
+    else:
+        # Gloo + CPU keeps the one-process NCFM smoke runnable on Windows CPU.
+        device = torch.device("cpu")
     return rank, world_size, local_rank, local_world_size, device
 
 

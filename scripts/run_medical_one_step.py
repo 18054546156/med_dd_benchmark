@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 """对每个算法执行一次最小真实计算闭环。
 
-这里的 ``one-step`` 不是替代论文实验，而是验证医疗输入已经穿过
-loader、网络、算法损失和反向更新；正式训练仍由各 raw 算法自己的入口负责。
+这里的 ``one-step`` 不是替代论文实验：匹配类算法调用其核心 loss，
+MTT/HoP-TM/NCFM 做快速网络或轨迹 probe；完整训练仍由各适配入口负责。
 """
 
 from __future__ import annotations
@@ -75,6 +75,117 @@ def logits_from_output(output, batch_size, num_classes):
     raise AssertionError(f"找不到分类 logits: {[getattr(x, 'shape', None) for x in candidates]}")
 
 
+def freeze_parameters(model):
+    """冻结教师网络参数，但保留输入图像的梯度链。"""
+    for parameter in model.parameters():
+        parameter.requires_grad_(False)
+
+
+def make_synthetic(images):
+    """从真实样本附近初始化合成样本，确保 smoke 能观察到非零更新。"""
+    return (
+        images.detach().clone() + 1e-3 * torch.randn_like(images)
+    ).requires_grad_(True)
+
+
+def require_input_gradient(synthetic):
+    """确认匹配损失确实把梯度传回合成图像。"""
+    if synthetic.grad is None:
+        raise AssertionError("算法匹配损失没有回传到合成图像")
+
+
+def run_distribution_matching(model, images, synthetic):
+    """执行 DM 的 embedding 均值匹配，而不是复用 DC 的梯度匹配。"""
+    freeze_parameters(model)
+    embed = model.module.embed if torch.cuda.device_count() > 1 else model.embed
+    real_feature = embed(images).detach()
+    syn_feature = embed(synthetic)
+    loss = torch.sum((real_feature.mean(dim=0) - syn_feature.mean(dim=0)) ** 2)
+    loss.backward()
+    return loss
+
+
+def run_cafe_matching(module, model, images, synthetic, labels, num_classes):
+    """执行 CAFE 的多层 feature alignment 与 inner output matching。"""
+    freeze_parameters(model)
+    real_output, real_features = model(images)
+    syn_output, syn_features = model(synthetic)
+    criterion = nn.CrossEntropyLoss()
+    loss = criterion(real_output, labels)
+    feature_weights = ((-1, 0.1), (-2, 0.1), (-3, 1.0), (-4, 1.0))
+
+    def criterion_middle(real_feature, syn_feature):
+        real_shape = real_feature.shape
+        real_mean = real_feature.reshape(
+            num_classes, real_shape[0] // num_classes, *real_shape[1:]
+        ).mean(dim=1)
+        syn_shape = syn_feature.shape
+        syn_mean = syn_feature.reshape(
+            num_classes, syn_shape[0] // num_classes, *syn_shape[1:]
+        ).mean(dim=1)
+        return nn.MSELoss(reduction="sum")(real_mean, syn_mean)
+
+    for index, weight in feature_weights:
+        real_feature = real_features[index]
+        syn_feature = syn_features[index]
+        loss = loss + weight * criterion_middle(real_feature, syn_feature)
+
+    # CAFE 的第一层特征同时参与类中心和 inner-loop 分类匹配。
+    real_first = real_features[0].reshape(
+        num_classes, -1, *real_features[0].shape[1:]
+    ).mean(dim=1)
+    syn_first = syn_features[0].reshape(
+        num_classes, -1, *syn_features[0].shape[1:]
+    ).mean(dim=1)
+    class_logits = torch.mm(real_features[0], syn_first.t())
+    loss = loss + criterion_middle(syn_first, real_first)
+    loss = loss + 0.01 * nn.CrossEntropyLoss(reduction="sum")(class_logits, labels)
+    loss.backward()
+    return loss
+
+
+def run_datadam_matching(module, model, images, synthetic, num_classes):
+    """执行 DataDAM 的 ReLU attention/output matching。"""
+    freeze_parameters(model)
+    activations = {}
+
+    def capture(name):
+        def hook(_, __, output):
+            activations[name] = output.clone()
+
+        return hook
+
+    base = model.module if torch.cuda.device_count() > 1 else model
+    hooks = []
+    for name, layer in base.features.named_modules():
+        if isinstance(layer, nn.ReLU):
+            hooks.append(layer.register_forward_hook(capture(f"ReLU_{len(hooks)}")))
+
+    real_output = model(images)[0].detach()
+    real_activations = list(activations.values())
+    activations.clear()
+    syn_output = model(synthetic)[0]
+    syn_activations = list(activations.values())
+    for hook in hooks:
+        hook.remove()
+
+    def batch_error(real, syn):
+        real_mean = real.reshape(num_classes, -1).mean(dim=1)
+        syn_mean = syn.reshape(num_classes, -1).mean(dim=1)
+        return torch.sum((real_mean - syn_mean) ** 2)
+
+    loss = torch.zeros((), device=synthetic.device)
+    for real_activation, syn_activation in zip(
+        real_activations[:-1], syn_activations[:-1]
+    ):
+        real_attention = module.get_attention(real_activation.detach(), param=1, exp=1, norm="l2")
+        syn_attention = module.get_attention(syn_activation, param=1, exp=1, norm="l2")
+        loss = loss + 100.0 * batch_error(real_attention, syn_attention)
+    loss = loss + 100.0 * 0.01 * batch_error(real_output, syn_output)
+    loss.backward()
+    return loss
+
+
 def load_algorithm(algorithm, dataset, data_path):
     adapted = ROOT / "adapted"
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -140,9 +251,9 @@ def run_one(algorithm, dataset, data_path):
     model = model.to(device).train()
 
     # DataDAM/CAFE 的网络返回 tuple，其余官方 ConvNet 返回 logits tensor。
-    if algorithm in {"DC", "DSA", "DM", "CAFE"}:
+    if algorithm in {"DC", "DSA"}:
         criterion = nn.CrossEntropyLoss()
-        synthetic = images.detach().clone().requires_grad_(True)
+        synthetic = make_synthetic(images)
         real_logits = logits_from_output(model(images), num_classes, num_classes)
         real_grad = torch.autograd.grad(criterion(real_logits, labels), model.parameters())
         syn_logits = logits_from_output(model(synthetic), num_classes, num_classes)
@@ -152,20 +263,27 @@ def run_one(algorithm, dataset, data_path):
         args = SimpleNamespace(device=device, dis_metric="ours")
         loss = module.match_loss(syn_grad, [grad.detach() for grad in real_grad], args)
         loss.backward()
-        if synthetic.grad is None:
-            raise AssertionError("梯度匹配没有回传到合成图像")
+        require_input_gradient(synthetic)
         torch.optim.SGD([synthetic], lr=0.01).step()
         detail = f"gradient_match_loss={float(loss.detach()):.6f}"
+    elif algorithm == "DM":
+        synthetic = make_synthetic(images)
+        loss = run_distribution_matching(model, images, synthetic)
+        require_input_gradient(synthetic)
+        torch.optim.SGD([synthetic], lr=0.01).step()
+        detail = f"distribution_match_loss={float(loss.detach()):.6f}"
+    elif algorithm == "CAFE":
+        synthetic = make_synthetic(images)
+        loss = run_cafe_matching(module, model, images, synthetic, labels, num_classes)
+        require_input_gradient(synthetic)
+        torch.optim.SGD([synthetic], lr=0.01).step()
+        detail = f"feature_match_loss={float(loss.detach()):.6f}"
     elif algorithm == "DataDAM":
-        # DataDAM 官方网络的第二个返回值是分类 logits，第一个是 embedding。
-        output = model(images)
-        logits = logits_from_output(output, num_classes, num_classes)
-        loss = nn.CrossEntropyLoss()(logits, labels)
-        optimizer = torch.optim.SGD(model.parameters(), lr=0.001)
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-        detail = f"classification_loss={float(loss.detach()):.6f}"
+        synthetic = make_synthetic(images)
+        loss = run_datadam_matching(module, model, images, synthetic, num_classes)
+        require_input_gradient(synthetic)
+        torch.optim.SGD([synthetic], lr=0.01).step()
+        detail = f"attention_match_loss={float(loss.detach()):.6f}"
     elif algorithm == "NCFM":
         logits = logits_from_output(model(images), num_classes, num_classes)
         loss = nn.CrossEntropyLoss()(logits, labels)

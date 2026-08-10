@@ -140,6 +140,8 @@ def get_dataset(dataset, data_path, batch_size=1, args=None):
                                             transforms.CenterCrop(im_size)])
         dst_train = datasets.ImageFolder(os.path.join(data_path, "COVID", "train"), transform=transform)  # no augmentation
         dst_test = datasets.ImageFolder(os.path.join(data_path, "COVID", "test"), transform=transform)
+        # FTD buffer 会再次通过 class_map 编码标签，医疗类别保持 identity 映射。
+        class_map = {x: x for x in range(num_classes)}
 
     elif dataset == 'Kvasir':
         # FTD/GSAM buffer 使用 Kvasir v2 的八类 ImageFolder 数据。
@@ -167,8 +169,6 @@ def get_dataset(dataset, data_path, batch_size=1, args=None):
         dst_test = datasets.ImageFolder(
             os.path.join(data_path, 'Kvasir', 'test'), transform=transform
         )
-        class_map = {x: x for x in range(num_classes)}
-
         class_map = {x: x for x in range(num_classes)}
 
     else:

@@ -11,6 +11,7 @@ raw/
 buffers/
 results/
 wandb/
+logged_files/
 adapted/*/wandb/
 adapted/*/logged_files/
 

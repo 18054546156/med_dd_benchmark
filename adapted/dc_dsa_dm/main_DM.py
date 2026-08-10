@@ -29,11 +29,14 @@ def main():
     parser.add_argument('--data_path', type=str, default='data', help='dataset path')
     parser.add_argument('--save_path', type=str, default='result', help='path to save results')
     parser.add_argument('--dis_metric', type=str, default='ours', help='distance metric')
+    parser.add_argument('--device', choices=['auto', 'cuda', 'cpu'], default='auto',
+                        help='选择运行设备；auto 保持官方的 CUDA 优先行为')
 
     args = parser.parse_args()
     args.method = 'DM'
     args.outer_loop, args.inner_loop = get_loops(args.ipc)
-    args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    # 允许 smoke 在其他 GPU 任务占用显存时显式退回 CPU。
+    args.device = 'cuda' if args.device != 'cpu' and torch.cuda.is_available() else 'cpu'
     args.dsa_param = ParamDiffAug()
     args.dsa = False if args.dsa_strategy in ['none', 'None'] else True
 
@@ -46,6 +49,9 @@ def main():
     eval_it_pool = np.arange(0, args.Iteration+1, 2000).tolist() if args.eval_mode == 'S' or args.eval_mode == 'SS' else [args.Iteration] # The list of iterations when we evaluate models and record results.
     print('eval_it_pool: ', eval_it_pool)
     channel, im_size, num_classes, class_names, mean, std, dst_train, dst_test, testloader = get_dataset(args.dataset, args.data_path)
+    # DM 的 epoch() 在非 DSA 模式下需要 DC augmentation 参数；原始入口
+    # 漏掉了初始化，导致第一次评估前访问不存在的 dc_aug_param。
+    args.dc_aug_param = get_daparam(args.dataset, args.model, args.model, args.ipc)
     model_eval_pool = get_eval_pool(args.eval_mode, args.model, args.model)
 
 

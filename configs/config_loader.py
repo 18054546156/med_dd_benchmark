@@ -171,11 +171,14 @@ def get_config_path(algorithm: str, dataset: str, ipc: int = 10,
     base_dir = Path(__file__).parent
     dataset_lower = dataset.lower()
 
-    # NCFM使用不同的路径结构
-    if algorithm == 'ncfm':
-        config_path = base_dir / algorithm / f"{dataset_lower}.yaml"
+    # 所有当前适配算法都按 dataset 子目录组织配置；NCFM 也使用同一层级，
+    # 不能按旧版的 configs/ncfm/<dataset>.yaml 推导路径。
+    if algorithm == 'dc_dsa_dm':
+        # DC/DSA/DM 共用官方入口配置，文件名保留 dc 后缀以对应原仓库命名。
+        filename = f"ipc{ipc}_dc_{config_type}.yaml"
     else:
-        config_path = base_dir / algorithm / dataset_lower / f"ipc{ipc}_{config_type}.yaml"
+        filename = f"ipc{ipc}_{config_type}.yaml"
+    config_path = base_dir / algorithm / dataset_lower / filename
 
     return config_path
 
