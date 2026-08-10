@@ -1,0 +1,82 @@
+# PathMNIST - DataDAM注意力匹配 - IPC10 - 完整配置
+# DataDAM: 通过注意力图匹配进行数据集蒸馏
+
+dataset: PathMNIST
+method: DataDAM
+model: ConvNet
+
+# 数据集信息
+num_classes: 9
+channel: 3
+im_size: [32, 32]
+
+# 蒸馏参数
+ipc: 10                    # Images Per Class
+Iteration: 10000           # 蒸馏迭代次数
+lr_img: 1.0                # 合成图像学习率
+batch_real: 256            # 真实数据批大小
+batch_train: 256           # 训练批大小
+
+# DataDAM特定参数
+attention:
+  attn_type: "spatial"     # 注意力类型：spatial/channel/both
+  match_type: "mse"        # 匹配类型：mse/cosine/kl
+  attn_layers: [2, 3]      # 使用哪些层的注意力（ConvNet层索引）
+  lambda_attn: 1.0         # 注意力匹配权重
+  lambda_grad: 0.5         # 梯度匹配权重（DataDAM结合梯度匹配）
+
+# 注意力提取配置
+extract_attention:
+  method: "gradcam"        # 注意力提取方法：gradcam/attention/activation
+  normalize: True          # 是否归一化注意力图
+  threshold: 0.1           # 注意力阈值
+
+# 网络参数
+network:
+  depth: 3                 # ConvNet深度
+  width: 128               # ConvNet宽度
+  norm_type: instance      # 归一化类型
+  activation: relu         # 激活函数
+
+# 优化器参数
+optimizer:
+  optimizer_img: "sgd"     # 图像优化器
+  momentum: 0.5            # 动量
+  lr_teacher: 0.01         # 教师网络学习率
+  weight_decay: 0.0005     # 权重衰减
+
+# 数据增强
+augmentation:
+  dsa: True                # 使用可微增强
+  dsa_strategy: "color_crop_cutout_flip_scale_rotate"
+
+# 评估参数
+evaluation:
+  num_exp: 5               # 实验次数
+  num_eval: 5              # 每次实验的评估次数
+  epoch_eval_train: 300    # 评估时训练轮数
+  eval_pool: "average"     # 评估池化方式
+  eval_it: 500             # 评估间隔
+
+# 初始化
+init: "real"               # 使用真实图像初始化
+
+# 设备和路径
+device: "cuda"
+data_path: "data/prepared"
+save_path: "../results/datadam/PathMNIST/ipc10"
+
+# Wandb日志（可选）
+wandb: False
+project: "med_dd_pathmnist_datadam"
+
+# 其他
+seed: 0
+save_images: True
+save_attention_maps: True  # 保存注意力图
+
+# DataDAM说明：
+# 1. 核心思想：匹配真实数据和合成数据的注意力图
+# 2. 注意力图反映模型关注的区域
+# 3. 对医疗图像特别有效（关键区域匹配）
+# 4. lambda_attn和lambda_grad控制两种损失的权重

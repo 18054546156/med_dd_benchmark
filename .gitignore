@@ -1,0 +1,27 @@
+# 官方 raw 仓库保留各自的 Git 历史，不纳入外层仓库。
+raw/
+
+# 下载数据、预处理图片和运行时产物不进入源码版本控制。
+data/*
+!data/prepared/
+!data/prepared/*/
+!data/prepared/*/manifest.json
+buffers/
+results/
+
+# Python 缓存、日志和本地环境文件。
+__pycache__/
+*.py[cod]
+*.log
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+env/
+
+# 编辑器和系统文件。
+.idea/
+.vscode/
+*.swp
+Thumbs.db
+.DS_Store

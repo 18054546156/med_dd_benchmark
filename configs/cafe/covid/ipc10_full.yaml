@@ -1,0 +1,84 @@
+# COVID - CAFE特征对齐 - IPC10 - 完整配置
+
+dataset: COVID
+method: CAFE
+model: ConvNet
+
+# 数据集信息
+num_classes: 4
+channel: 3
+im_size: [112, 112]
+
+# 蒸馏参数
+ipc: 10
+Iteration: 5000            # 小数据集减少迭代
+lr_img: 10.0               # 中等尺寸图像
+batch_real: 128
+batch_train: 128
+
+# CAFE特定参数
+cafe:
+  # 特征对齐参数
+  alpha: 0.6               # 增大特征对齐权重（小数据集）
+  beta: 0.4                # 减小梯度匹配权重
+
+  # 特征提取
+  feature_layers: [2, 3, 4] # 更多层
+  feature_type: "embedding"
+
+  # 对比学习参数
+  temperature: 0.5
+  contrast_mode: "all"
+
+  # 特征对齐方式
+  align_type: "mse"
+  normalize_features: True
+
+# 网络参数
+network:
+  depth: 4                 # 中等深度
+  width: 128
+  norm_type: instance
+  activation: relu
+
+# 优化器参数
+optimizer:
+  optimizer_img: "sgd"
+  momentum: 0.5
+  lr_teacher: 0.01
+  weight_decay: 0.001      # 增大权重衰减
+
+# 数据增强（重要）
+augmentation:
+  dsa: True
+  dsa_strategy: "color_crop_cutout_flip_scale_rotate"
+
+# 评估参数
+evaluation:
+  num_exp: 5
+  num_eval: 5
+  epoch_eval_train: 300
+  eval_pool: "average"
+  eval_it: 250
+
+# 初始化
+init: "real"
+
+# 设备和路径
+device: "cuda"
+data_path: "data/prepared"
+save_path: "../results/cafe/COVID/ipc10"
+
+# Wandb
+wandb: False
+project: "med_dd_covid_cafe"
+
+# 其他
+seed: 0
+save_images: True
+save_features: True
+
+# COVID特定：
+# 1. 小数据集，增大特征对齐权重alpha
+# 2. 需要强数据增强
+# 3. 类别不均衡需要注意

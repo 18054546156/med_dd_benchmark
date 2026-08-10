@@ -1,0 +1,75 @@
+# COVID - DataDAM注意力匹配 - IPC10 - 完整配置
+
+dataset: COVID
+method: DataDAM
+model: ConvNet
+
+# 数据集信息
+num_classes: 4
+channel: 3
+im_size: [112, 112]
+
+# 蒸馏参数
+ipc: 10
+Iteration: 5000            # 小数据集减少迭代
+lr_img: 10.0               # 中等尺寸图像
+batch_real: 128
+batch_train: 128
+
+# DataDAM特定参数
+attention:
+  attn_type: "spatial"     # 空间注意力对医疗图像更重要
+  match_type: "mse"
+  attn_layers: [2, 3, 4]   # 更多层（深度4）
+  lambda_attn: 1.5         # 增大注意力权重（小数据集）
+  lambda_grad: 0.5
+
+# 注意力提取配置
+extract_attention:
+  method: "gradcam"
+  normalize: True
+  threshold: 0.1
+
+# 网络参数
+network:
+  depth: 4                 # 中等深度
+  width: 128
+  norm_type: instance
+  activation: relu
+
+# 优化器参数
+optimizer:
+  optimizer_img: "sgd"
+  momentum: 0.5
+  lr_teacher: 0.01
+  weight_decay: 0.001      # 增大权重衰减
+
+# 数据增强（重要）
+augmentation:
+  dsa: True
+  dsa_strategy: "color_crop_cutout_flip_scale_rotate"
+
+# 评估参数
+evaluation:
+  num_exp: 5
+  num_eval: 5
+  epoch_eval_train: 300
+  eval_pool: "average"
+  eval_it: 250
+
+# 初始化
+init: "real"
+
+# 设备和路径
+device: "cuda"
+data_path: "data/prepared"
+save_path: "../results/datadam/COVID/ipc10"
+
+# Wandb
+wandb: False
+project: "med_dd_covid_datadam"
+
+# 其他
+seed: 0
+save_images: True
+save_attention_maps: True

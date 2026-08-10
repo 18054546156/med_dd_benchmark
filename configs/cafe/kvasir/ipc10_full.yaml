@@ -1,0 +1,85 @@
+# Kvasir - CAFE特征对齐 - IPC10 - 完整配置
+
+dataset: Kvasir
+method: CAFE
+model: ConvNet
+
+# 数据集信息
+num_classes: 8
+channel: 3
+im_size: [128, 128]
+
+# 蒸馏参数
+ipc: 10
+Iteration: 8000
+lr_img: 100.0              # 大尺寸图像
+batch_real: 64
+batch_train: 64
+
+# CAFE特定参数
+cafe:
+  # 特征对齐参数
+  alpha: 0.5               # 特征对齐损失权重
+  beta: 0.5                # 梯度匹配损失权重
+
+  # 特征提取
+  feature_layers: [3, 4, 5] # 更深层
+  feature_type: "embedding"
+
+  # 对比学习参数
+  temperature: 0.5
+  contrast_mode: "all"
+
+  # 特征对齐方式
+  align_type: "mse"
+  normalize_features: True
+
+# 网络参数
+network:
+  depth: 5                 # 大尺寸需要更深
+  width: 128
+  norm_type: instance
+  activation: relu
+
+# 优化器参数
+optimizer:
+  optimizer_img: "sgd"
+  momentum: 0.5
+  lr_teacher: 0.01
+  weight_decay: 0.0005
+
+# 数据增强
+augmentation:
+  dsa: True
+  dsa_strategy: "color_crop_cutout_flip_scale_rotate"
+
+# 评估参数
+evaluation:
+  num_exp: 5
+  num_eval: 5
+  epoch_eval_train: 300
+  eval_pool: "average"
+  eval_it: 400
+
+# 初始化
+init: "real"
+
+# 设备和路径
+device: "cuda"
+data_path: "data/prepared"
+save_path: "../results/cafe/Kvasir/ipc10"
+
+# Wandb
+wandb: False
+project: "med_dd_kvasir_cafe"
+
+# 其他
+seed: 0
+save_images: True
+save_features: True
+
+# Kvasir特定：
+# 1. 128x128大尺寸，需要更多GPU内存
+# 2. 特征维度大，特征对齐计算量大
+# 3. 建议batch_train=64
+# 4. 可能需要更多迭代次数
