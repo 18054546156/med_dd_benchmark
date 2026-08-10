@@ -45,13 +45,17 @@ def adjust_learning_rate(optimizer, epoch, init_lr):
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
 
-def criterion_middle(real_feature, syn_feature):
+def criterion_middle(real_feature, syn_feature, num_classes=10):
     MSE_Loss = nn.MSELoss(reduction='sum')
     shape_real = real_feature.shape
-    real_feature = torch.mean(real_feature.view(10, shape_real[0] // 10, *shape_real[1:]), dim=1)
+    real_feature = torch.mean(
+        real_feature.view(num_classes, shape_real[0] // num_classes, *shape_real[1:]), dim=1
+    )
 
     shape_syn = syn_feature.shape
-    syn_feature = torch.mean(syn_feature.view(10, shape_syn[0] // 10, *shape_syn[1:]), dim=1)
+    syn_feature = torch.mean(
+        syn_feature.view(num_classes, shape_syn[0] // num_classes, *shape_syn[1:]), dim=1
+    )
 
     return MSE_Loss(real_feature, syn_feature)
 
@@ -94,17 +98,16 @@ def main():
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
     args.outer_loop, args.inner_loop = get_loops(args.ipc)
     # import pdb; pdb.set_trace()
-    args.save_path = str(args.lambda_1) + "_" + str(args.lambda_2) + "_" + 'oi_cifar10_ipc10_watcher_5_v3'
-    
     args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
     args.dsa_param = ParamDiffAug()
     args.dsa = True if args.method == 'DSA' else False
 
     if not os.path.exists(args.data_path):
-        os.mkdir(args.data_path)
+        os.makedirs(args.data_path, exist_ok=True)
 
     if not os.path.exists(args.save_path):
-        os.mkdir(args.save_path)
+        # 使用命令行/配置指定的结果目录，不再覆盖用户传入的路径。
+        os.makedirs(args.save_path, exist_ok=True)
 
     eval_it_pool = np.arange(0, args.Iteration + 1, 100).tolist() if args.eval_mode == 'S' else [
         args.Iteration]  # The list of iterations when we evaluate models and record results.
@@ -264,10 +267,11 @@ def main():
                     img_syn_gather.append(img_syn)
                     lab_syn_gather.append(lab_syn)
 
-                img_real_gather = torch.stack(img_real_gather, dim=0).reshape(args.batch_real * 10, 3, 32, 32)
-                img_syn_gather = torch.stack(img_syn_gather, dim=0).reshape(args.ipc * 10, 3, 32, 32)
-                lab_real_gather = torch.stack(lab_real_gather, dim=0).reshape(args.batch_real * 10)
-                lab_syn_gather = torch.stack(lab_syn_gather, dim=0).reshape(args.ipc * 10)
+                # 各类别 batch 的图像尺寸由数据合同决定，不能固定成 CIFAR-10 的 3x32x32。
+                img_real_gather = torch.cat(img_real_gather, dim=0)
+                img_syn_gather = torch.cat(img_syn_gather, dim=0)
+                lab_real_gather = torch.cat(lab_real_gather, dim=0)
+                lab_syn_gather = torch.cat(lab_syn_gather, dim=0)
 
                 ####forward#####
                 output_real, real_features = net(
@@ -275,18 +279,18 @@ def main():
                 output_syn, syn_features = net(
                     img_syn_gather)
 
-                loss_middle = args.fourth_weight * criterion_middle(real_features[-1], syn_features[-1]) + args.third_weight * criterion_middle(real_features[-2], syn_features[-2]) + args.second_weight * criterion_middle(real_features[-3], syn_features[-3]) + args.first_weight * criterion_middle(real_features[-4], syn_features[-4])
+                loss_middle = args.fourth_weight * criterion_middle(real_features[-1], syn_features[-1], num_classes) + args.third_weight * criterion_middle(real_features[-2], syn_features[-2], num_classes) + args.second_weight * criterion_middle(real_features[-3], syn_features[-3], num_classes) + args.first_weight * criterion_middle(real_features[-4], syn_features[-4], num_classes)
                 loss_real = criterion(output_real, lab_real_gather)
                 loss += loss_middle
                 loss += loss_real
 
-                last_real_feature = torch.mean(real_features[0].view(10, int(real_features[0].shape[0] / num_classes), real_features[0].shape[1]), dim=1)
-                last_syn_feature = torch.mean(syn_features[0].view(10, int(syn_features[0].shape[0] / num_classes), syn_features[0].shape[1]), dim=1)
+                last_real_feature = torch.mean(real_features[0].view(num_classes, int(real_features[0].shape[0] / num_classes), real_features[0].shape[1]), dim=1)
+                last_syn_feature = torch.mean(syn_features[0].view(num_classes, int(syn_features[0].shape[0] / num_classes), syn_features[0].shape[1]), dim=1)
                 output = torch.mm(real_features[0], last_syn_feature.t())
                 last_real_feature = torch.mean(
-                    last_real_feature.unsqueeze(0).reshape(10, int(last_real_feature.shape[0] / num_classes),
+                    last_real_feature.unsqueeze(0).reshape(num_classes, int(last_real_feature.shape[0] / num_classes),
                                                        last_real_feature.shape[1]), dim=1)
-                loss_output = criterion_middle(last_syn_feature, last_real_feature) + args.inner_weight * criterion_sum(output, lab_real_gather)
+                loss_output = criterion_middle(last_syn_feature, last_real_feature, num_classes) + args.inner_weight * criterion_sum(output, lab_real_gather)
                 loss += loss_output
 
                 loss.backward()

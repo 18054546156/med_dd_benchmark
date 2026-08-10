@@ -7,6 +7,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'adapted', 'ncfm'))
 
 from utils.utils import load_resized_data
 
+# NCFM 与其他算法共享预处理后的 ImageFolder 根目录。
+DATA_ROOT = os.path.join(os.path.dirname(__file__), 'data', 'prepared')
+
 def test_pathmnist():
     print("=" * 60)
     print("测试 PathMNIST 数据加载")
@@ -15,7 +18,7 @@ def test_pathmnist():
     try:
         train_dataset, val_dataset = load_resized_data(
             dataset='pathmnist',
-            data_dir='./data',
+            data_dir=DATA_ROOT,
             size=32,
             nclass=9,
             load_memory=False,
@@ -48,7 +51,7 @@ def test_covid():
     print("测试 COVID 数据加载")
     print("=" * 60)
 
-    covid_dir = "./data/COVID/train"
+    covid_dir = os.path.join(DATA_ROOT, 'COVID', 'train')
     if not os.path.exists(covid_dir):
         print(f"[SKIP] COVID 数据集不存在: {covid_dir}")
         print("  跳过测试 (数据集未准备)")
@@ -57,7 +60,7 @@ def test_covid():
     try:
         train_dataset, val_dataset = load_resized_data(
             dataset='covid',
-            data_dir='./data',
+            data_dir=DATA_ROOT,
             size=112,
             nclass=4,
             load_memory=False,
@@ -89,7 +92,7 @@ def test_kvasir():
     print("测试 Kvasir 数据加载")
     print("=" * 60)
 
-    kvasir_dir = "./data/Kvasir/train"
+    kvasir_dir = os.path.join(DATA_ROOT, 'Kvasir', 'train')
     if not os.path.exists(kvasir_dir):
         print(f"[SKIP] Kvasir 数据集不存在: {kvasir_dir}")
         print("  跳过测试 (数据集未准备)")
@@ -98,7 +101,7 @@ def test_kvasir():
     try:
         train_dataset, val_dataset = load_resized_data(
             dataset='kvasir',
-            data_dir='./data',
+            data_dir=DATA_ROOT,
             size=128,
             nclass=8,
             load_memory=False,

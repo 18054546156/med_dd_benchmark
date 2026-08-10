@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.utils
 from tqdm import tqdm
-from utils import get_dataset, get_network, get_eval_pool, evaluate_synset, get_time, DiffAugment, ParamDiffAug
+from utils import get_dataset, get_network, get_eval_pool, get_daparam, evaluate_synset, get_time, DiffAugment, ParamDiffAug
 import wandb
 import copy
 import random
@@ -70,6 +70,10 @@ def main(args):
 
     args.dsa_param = dsa_params
     args.zca_trans = zca_trans
+
+    # wandb 重建 Namespace 后补回 DC 评估所需的增强参数，避免 dsa=False 时属性丢失。
+    if not args.dsa:
+        args.dc_aug_param = get_daparam(args.dataset, args.model, args.model, args.ipc)
 
     if args.batch_syn is None:
         args.batch_syn = num_classes * args.ipc
@@ -230,7 +234,9 @@ def main(args):
             with torch.no_grad():
                 image_save = image_syn.cuda()
 
-                save_dir = os.path.join(".", "logged_files", args.dataset, wandb.run.name)
+                # 离线 wandb 可能没有 run.name，使用 run.id 保证最小 smoke 也能落盘。
+                run_name = getattr(wandb.run, "name", None) or getattr(wandb.run, "id", "offline")
+                save_dir = os.path.join(".", "logged_files", args.dataset, run_name)
 
                 if not os.path.exists(save_dir):
                     os.makedirs(save_dir)

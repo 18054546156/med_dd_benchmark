@@ -15,6 +15,7 @@ import os
 import sys
 import kornia as K
 import tqdm
+from types import SimpleNamespace
 from torch.utils.data import Dataset
 from torchvision import datasets, transforms
 from scipy.ndimage.interpolation import rotate as scipyrotate
@@ -24,7 +25,34 @@ from networks import MLP, ConvNet, LeNet, AlexNet, VGG11BN, VGG11, ResNet18, Res
 _shared_utils = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'utils'))
 if _shared_utils not in sys.path:
     sys.path.insert(0, _shared_utils)
-from medical_dataset_utils import MedMNISTWrapper, get_medmnist_root
+from medical_dataset_utils import MedMNISTWrapper, get_medmnist_root, scalarize_label
+
+
+def _build_class_loaders(dataset, num_classes, batch_size, num_workers):
+    """按标签元数据建立 MTT 的分组 loader，避免重复解码整套图像。"""
+    raw_targets = getattr(dataset, "targets", None)
+    if raw_targets is None:
+        raw_targets = getattr(dataset, "labels", None)
+
+    if raw_targets is None:
+        # 只有自定义数据集没有 targets/labels 时才需要逐样本读取。
+        targets = [scalarize_label(dataset[index][1]) for index in range(len(dataset))]
+    else:
+        targets = [scalarize_label(label) for label in raw_targets]
+
+    class_indices = {
+        class_id: [index for index, label in enumerate(targets) if label == class_id]
+        for class_id in range(num_classes)
+    }
+    return {
+        class_id: torch.utils.data.DataLoader(
+            torch.utils.data.Subset(dataset, indices),
+            batch_size=batch_size,
+            shuffle=True,
+            num_workers=num_workers,
+        )
+        for class_id, indices in class_indices.items()
+    }
 
 class Config:
     imagenette = [0, 217, 482, 491, 497, 566, 569, 571, 574, 701]
@@ -56,6 +84,15 @@ class Config:
 config = Config()
 
 def get_dataset(dataset, data_path, batch_size=1, subset="imagenette", args=None):
+
+    # 原始 MTT 的部分调用不传 args；医疗 loader 仍需显式关闭 ZCA 才能安全运行。
+    if args is None:
+        args = SimpleNamespace(zca=False, device='cuda' if torch.cuda.is_available() else 'cpu')
+    elif not hasattr(args, 'zca'):
+        args.zca = False
+    if not hasattr(args, 'device'):
+        args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    loader_workers = int(getattr(args, 'workers', 0))
 
     class_map = None
     loader_train_dict = None
@@ -188,20 +225,9 @@ def get_dataset(dataset, data_path, batch_size=1, subset="imagenette", args=None
 
         # MTT特有：创建按类别分组的数据加载器
         # 用于轨迹匹配时分别处理每个类别
-        dst_train_dict = {}
-        for c in range(num_classes):
-            indices = [i for i, (_, label) in enumerate(dst_train) if label == c]
-            subset = torch.utils.data.Subset(dst_train, indices)
-            dst_train_dict[c] = subset
-
-        loader_train_dict = {
-            c: torch.utils.data.DataLoader(
-                dst_train_dict[c],
-                batch_size=batch_size,
-                shuffle=True,
-                num_workers=2
-            ) for c in range(num_classes)
-        }
+        loader_train_dict = _build_class_loaders(
+            dst_train, num_classes, batch_size, loader_workers
+        )
 
     elif dataset == 'COVID':
         # COVID: COVID-19 Radiography Database 的四类图像分类数据集。
@@ -242,20 +268,9 @@ def get_dataset(dataset, data_path, batch_size=1, subset="imagenette", args=None
         class_map = {x: x for x in range(num_classes)}
 
         # MTT特有：创建按类别分组的数据加载器
-        dst_train_dict = {}
-        for c in range(num_classes):
-            indices = [i for i, (_, label) in enumerate(dst_train) if label == c]
-            subset = torch.utils.data.Subset(dst_train, indices)
-            dst_train_dict[c] = subset
-
-        loader_train_dict = {
-            c: torch.utils.data.DataLoader(
-                dst_train_dict[c],
-                batch_size=batch_size,
-                shuffle=True,
-                num_workers=2
-            ) for c in range(num_classes)
-        }
+        loader_train_dict = _build_class_loaders(
+            dst_train, num_classes, batch_size, loader_workers
+        )
 
     elif dataset == 'Kvasir':
         # Kvasir: 消化道内窥镜病变分类数据集
@@ -297,20 +312,9 @@ def get_dataset(dataset, data_path, batch_size=1, subset="imagenette", args=None
         class_map = {x: x for x in range(num_classes)}
 
         # MTT特有：创建按类别分组的数据加载器
-        dst_train_dict = {}
-        for c in range(num_classes):
-            indices = [i for i, (_, label) in enumerate(dst_train) if label == c]
-            subset = torch.utils.data.Subset(dst_train, indices)
-            dst_train_dict[c] = subset
-
-        loader_train_dict = {
-            c: torch.utils.data.DataLoader(
-                dst_train_dict[c],
-                batch_size=batch_size,
-                shuffle=True,
-                num_workers=2
-            ) for c in range(num_classes)
-        }
+        loader_train_dict = _build_class_loaders(
+            dst_train, num_classes, batch_size, loader_workers
+        )
 
     else:
         exit('unknown dataset: %s'%dataset)
@@ -346,7 +350,9 @@ def get_dataset(dataset, data_path, batch_size=1, subset="imagenette", args=None
         args.zca_trans = zca
 
 
-    testloader = torch.utils.data.DataLoader(dst_test, batch_size=128, shuffle=False, num_workers=2)
+    testloader = torch.utils.data.DataLoader(
+        dst_test, batch_size=128, shuffle=False, num_workers=loader_workers
+    )
 
 
     return channel, im_size, num_classes, class_names, mean, std, dst_train, dst_test, testloader, loader_train_dict, class_map, class_map_inv
@@ -740,7 +746,7 @@ def rand_scale(x, param):
             [0,  sy[i], 0],] for i in range(x.shape[0])]
     theta = torch.tensor(theta, dtype=torch.float)
     if param.batchmode: # batch-wise:
-        theta[:] = theta[0]
+        theta[:] = theta[0].clone()
     grid = F.affine_grid(theta, x.shape, align_corners=True).to(x.device)
     x = F.grid_sample(x, grid, align_corners=True)
     return x
@@ -754,7 +760,7 @@ def rand_rotate(x, param): # [-180, 180], 90: anticlockwise 90 degree
         [torch.sin(theta[i]), torch.cos(theta[i]),  0],]  for i in range(x.shape[0])]
     theta = torch.tensor(theta, dtype=torch.float)
     if param.batchmode: # batch-wise:
-        theta[:] = theta[0]
+        theta[:] = theta[0].clone()
     grid = F.affine_grid(theta, x.shape, align_corners=True).to(x.device)
     x = F.grid_sample(x, grid, align_corners=True)
     return x
@@ -765,7 +771,8 @@ def rand_flip(x, param):
     set_seed_DiffAug(param)
     randf = torch.rand(x.size(0), 1, 1, 1, device=x.device)
     if param.batchmode: # batch-wise:
-        randf[:] = randf[0]
+        # clone 避免 PyTorch 新版本检测到源/目标内存重叠。
+        randf[:] = randf[0].clone()
     return torch.where(randf < prob, x.flip(3), x)
 
 
@@ -774,7 +781,7 @@ def rand_brightness(x, param):
     set_seed_DiffAug(param)
     randb = torch.rand(x.size(0), 1, 1, 1, dtype=x.dtype, device=x.device)
     if param.batchmode:  # batch-wise:
-        randb[:] = randb[0]
+        randb[:] = randb[0].clone()
     x = x + (randb - 0.5)*ratio
     return x
 
@@ -785,7 +792,7 @@ def rand_saturation(x, param):
     set_seed_DiffAug(param)
     rands = torch.rand(x.size(0), 1, 1, 1, dtype=x.dtype, device=x.device)
     if param.batchmode:  # batch-wise:
-        rands[:] = rands[0]
+        rands[:] = rands[0].clone()
     x = (x - x_mean) * (rands * ratio) + x_mean
     return x
 
@@ -796,7 +803,7 @@ def rand_contrast(x, param):
     set_seed_DiffAug(param)
     randc = torch.rand(x.size(0), 1, 1, 1, dtype=x.dtype, device=x.device)
     if param.batchmode:  # batch-wise:
-        randc[:] = randc[0]
+        randc[:] = randc[0].clone()
     x = (x - x_mean) * (randc + ratio) + x_mean
     return x
 
@@ -810,8 +817,8 @@ def rand_crop(x, param):
     set_seed_DiffAug(param)
     translation_y = torch.randint(-shift_y, shift_y + 1, size=[x.size(0), 1, 1], device=x.device)
     if param.batchmode:  # batch-wise:
-        translation_x[:] = translation_x[0]
-        translation_y[:] = translation_y[0]
+        translation_x[:] = translation_x[0].clone()
+        translation_y[:] = translation_y[0].clone()
     grid_batch, grid_x, grid_y = torch.meshgrid(
         torch.arange(x.size(0), dtype=torch.long, device=x.device),
         torch.arange(x.size(2), dtype=torch.long, device=x.device),
@@ -832,8 +839,8 @@ def rand_cutout(x, param):
     set_seed_DiffAug(param)
     offset_y = torch.randint(0, x.size(3) + (1 - cutout_size[1] % 2), size=[x.size(0), 1, 1], device=x.device)
     if param.batchmode:  # batch-wise:
-        offset_x[:] = offset_x[0]
-        offset_y[:] = offset_y[0]
+        offset_x[:] = offset_x[0].clone()
+        offset_y[:] = offset_y[0].clone()
     grid_batch, grid_x, grid_y = torch.meshgrid(
         torch.arange(x.size(0), dtype=torch.long, device=x.device),
         torch.arange(cutout_size[0], dtype=torch.long, device=x.device),

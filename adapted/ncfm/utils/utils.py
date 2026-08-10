@@ -5,6 +5,7 @@ import torch.distributed as dist
 import torch.functional as F
 import numpy as np
 import contextlib
+from pathlib import Path
 from utils.ddp import load_state_dict
 from utils.experiment_tracker import LossPlotter
 from data.dataloader import (
@@ -31,6 +32,90 @@ _utils_path = os_module.path.abspath(os_module.path.join(os_module.path.dirname(
 if _utils_path not in sys.path:
     sys.path.insert(0, _utils_path)
 from medical_dataset_utils import MedMNISTWrapper, get_medmnist_root
+from medical_dataset_utils import MEDICAL_DATASET_SPECS, scalarize_label
+
+
+def _resolve_medical_data_root(data_dir, dataset):
+    """解析医疗数据根目录，兼容从仓库根目录或 NCFM 子目录启动。"""
+    repo_root = Path(__file__).resolve().parents[3]
+    requested = Path(data_dir).expanduser()
+    candidates = [requested]
+    if not requested.is_absolute():
+        candidates.extend([
+            Path.cwd() / requested,
+            repo_root / requested,
+            repo_root / "data" / "prepared",
+            repo_root / "data",
+        ])
+
+    seen = set()
+    for candidate in candidates:
+        candidate = candidate.resolve()
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        if dataset == "pathmnist":
+            if (candidate / "PathMNIST" / "pathmnist.npz").exists():
+                return candidate
+            if (candidate / "pathmnist.npz").exists():
+                return candidate
+        elif (candidate / dataset.upper() / "train").exists():
+            return candidate
+        elif (candidate / ("COVID" if dataset == "covid" else "Kvasir") / "train").exists():
+            return candidate
+
+    return requested.resolve()
+
+
+def _attach_dataset_metadata(dataset, nclass):
+    """给 NCFM 的自定义 DataLoader 补齐 nclass 和一维整数 targets。"""
+    dataset.nclass = nclass
+    if not hasattr(dataset, "targets"):
+        dataset.targets = [scalarize_label(dataset[i][1]) for i in range(len(dataset))]
+    else:
+        dataset.targets = [scalarize_label(label) for label in dataset.targets]
+    return dataset
+
+
+def _load_medical_dataset(dataset, data_dir, size):
+    """加载一个医疗数据集并返回 NCFM 需要的 train/validation pair。"""
+    spec_name = {
+        "pathmnist": "PathMNIST",
+        "covid": "COVID",
+        "kvasir": "Kvasir",
+    }[dataset]
+    spec = MEDICAL_DATASET_SPECS[spec_name]
+    image_size = int(size or spec["im_size"][0])
+    transform = transforms.Compose([
+        transforms.Resize((image_size, image_size)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=spec["mean"], std=spec["std"]),
+    ])
+    medical_root = _resolve_medical_data_root(data_dir, dataset)
+
+    if dataset == "pathmnist":
+        from medmnist import PathMNIST
+
+        medmnist_root = get_medmnist_root(medical_root)
+        train_dataset = MedMNISTWrapper(PathMNIST(
+            split="train", download=True, root=medmnist_root, transform=transform
+        ))
+        val_dataset = MedMNISTWrapper(PathMNIST(
+            split="test", download=True, root=medmnist_root, transform=transform
+        ))
+    else:
+        folder_name = "COVID" if dataset == "covid" else "Kvasir"
+        train_dataset = datasets.ImageFolder(
+            os.path.join(medical_root, folder_name, "train"), transform=transform
+        )
+        val_dataset = datasets.ImageFolder(
+            os.path.join(medical_root, folder_name, "test"), transform=transform
+        )
+
+    return (
+        _attach_dataset_metadata(train_dataset, spec["num_classes"]),
+        _attach_dataset_metadata(val_dataset, spec["num_classes"]),
+    )
 
 
 class BlurPoolConv2d(torch.nn.Module):
@@ -101,6 +186,10 @@ def define_model(dataset, norm_type, net_type, nch, depth, width, nclass, logger
 def load_resized_data(
     dataset, data_dir, size=None, nclass=None, load_memory=False, seed=0
 ):
+    # NCFM 配置使用小写名称，命令行和共享合同可能使用首字母大写。
+    dataset = str(dataset).lower()
+    if dataset in ("pathmnist", "covid", "kvasir"):
+        return _load_medical_dataset(dataset, data_dir, size)
     normalize = transforms.Normalize(mean=MEANS[dataset], std=STDS[dataset])
     with open(os.devnull, "w") as f, contextlib.redirect_stdout(f):
         if dataset == "cifar10":
@@ -262,76 +351,6 @@ def load_resized_data(
                 valdir, test_transform, nclass=nclass, seed=seed, load_memory=False
             )
 
-        # 添加 PathMNIST 数据集支持
-        elif dataset == "pathmnist":
-            from medmnist import PathMNIST
-            # 加载 MedMNIST 数据集
-            medmnist_root = get_medmnist_root(data_dir)
-            train_data = PathMNIST(split='train', download=True, root=medmnist_root, transform=transforms.ToTensor())
-            val_data = PathMNIST(split='test', download=True, root=medmnist_root, transform=transforms.ToTensor())
-
-            # 使用 MedMNISTWrapper 包装数据集以确保标签是标量整数
-            train_dataset = MedMNISTWrapper(train_data)
-            normalize = transforms.Normalize(mean=MEANS[dataset], std=STDS[dataset])
-            transform_test = transforms.Compose([transforms.ToTensor(), normalize]) if normalize else transforms.ToTensor()
-            val_data_test = PathMNIST(split='test', download=True, root=medmnist_root, transform=transform_test)
-            val_dataset = MedMNISTWrapper(val_data_test)
-            train_dataset.nclass = 9  # PathMNIST 有 9 个类别
-
-        # 添加 COVID 数据集支持
-        elif dataset == "covid":
-            # COVID 数据集使用 ImageFolder 格式
-            traindir = os.path.join(data_dir, "COVID", "train")
-            valdir = os.path.join(data_dir, "COVID", "test")
-
-            # 训练集转换（resize 到指定尺寸）
-            train_transform = transforms.Compose([
-                transforms.Resize((size, size)),
-                transforms.ToTensor()
-            ])
-
-            # 测试集转换（添加归一化）
-            normalize = transforms.Normalize(mean=MEANS[dataset], std=STDS[dataset])
-            test_transform = transforms.Compose([
-                transforms.Resize((size, size)),
-                transforms.ToTensor(),
-                normalize
-            ]) if normalize else transforms.Compose([
-                transforms.Resize((size, size)),
-                transforms.ToTensor()
-            ])
-
-            train_dataset = datasets.ImageFolder(traindir, transform=train_transform)
-            val_dataset = datasets.ImageFolder(valdir, transform=test_transform)
-            train_dataset.nclass = 4  # COVID 有 4 个类别
-
-        # 添加 Kvasir 数据集支持
-        elif dataset == "kvasir":
-            # Kvasir 数据集使用 ImageFolder 格式
-            traindir = os.path.join(data_dir, "Kvasir", "train")
-            valdir = os.path.join(data_dir, "Kvasir", "test")
-
-            # 训练集转换（resize 到指定尺寸）
-            train_transform = transforms.Compose([
-                transforms.Resize((size, size)),
-                transforms.ToTensor()
-            ])
-
-            # 测试集转换（添加归一化）
-            normalize = transforms.Normalize(mean=MEANS[dataset], std=STDS[dataset])
-            test_transform = transforms.Compose([
-                transforms.Resize((size, size)),
-                transforms.ToTensor(),
-                normalize
-            ]) if normalize else transforms.Compose([
-                transforms.Resize((size, size)),
-                transforms.ToTensor()
-            ])
-
-            train_dataset = datasets.ImageFolder(traindir, transform=train_transform)
-            val_dataset = datasets.ImageFolder(valdir, transform=test_transform)
-            train_dataset.nclass = 8  # Kvasir 有 8 个类别
-
         else:
             raise ValueError(f"Unsupported dataset: {dataset}")
 
@@ -409,7 +428,12 @@ def get_loader(args):
                 load_memory=args.load_memory,
             )
             if args.load_memory:
-                loader_real = ClassMemDataLoader(train_set, batch_size=args.batch_real)
+                # 内存加载器沿用 NCFM 当前运行设备，避免 CPU 环境硬编码 CUDA。
+                loader_real = ClassMemDataLoader(
+                    train_set,
+                    batch_size=args.batch_real,
+                    device=getattr(args, "device", None),
+                )
             else:
                 loader_real = ClassDataLoader(
                     train_set,
@@ -418,6 +442,7 @@ def get_loader(args):
                     shuffle=True,
                     pin_memory=True,
                     drop_last=True,
+                    device=getattr(args, "device", None),
                 )
 
         return loader_real, _

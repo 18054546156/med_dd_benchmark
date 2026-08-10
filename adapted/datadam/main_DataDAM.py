@@ -43,10 +43,11 @@ def main():
     args.dsa = False if args.dsa_strategy in ['none', 'None'] else True
 
     if not os.path.exists(args.data_path):
-        os.mkdir(args.data_path)
+        os.makedirs(args.data_path, exist_ok=True)
 
     if not os.path.exists(args.save_path):
-        os.mkdir(args.save_path)
+        # DataDAM 需要保留每个数据集的独立结果目录。
+        os.makedirs(args.save_path, exist_ok=True)
 
     eval_it_pool = np.arange(0, args.Iteration+1, 2000).tolist()[:] if args.eval_mode == 'S' or args.eval_mode == 'SS' else [args.Iteration] # The list of iterations when we evaluate models and record results.
     print('eval_it_pool: ', eval_it_pool)
@@ -251,20 +252,26 @@ def main():
                     err = torch.acos(num/denom)
                     
                 elif(err_type == "MSE_B"):
-                    err = torch.sum((torch.mean(real.reshape(num_classes, args.batch_real, -1), dim=1).cpu() - torch.mean(syn.cpu().reshape(num_classes, args.ipc, -1), dim=1))**2)
+                    # 保持张量在原设备上，不能在这里 .cpu()，否则
+                    # attention loss 与 image_syn 的梯度链会被截断。
+                    real_mean = torch.mean(real.reshape(num_classes, args.batch_real, -1), dim=1)
+                    syn_mean = torch.mean(syn.reshape(num_classes, args.ipc, -1), dim=1)
+                    err = torch.sum((real_mean - syn_mean) ** 2)
                 elif(err_type == "MAE_B"):
-                    err = torch.sum(torch.abs(torch.mean(real.reshape(num_classes, args.batch_real, -1), dim=1).cpu() - torch.mean(syn.reshape(num_classes, args.ipc, -1).cpu(), dim=1)))
+                    real_mean = torch.mean(real.reshape(num_classes, args.batch_real, -1), dim=1)
+                    syn_mean = torch.mean(syn.reshape(num_classes, args.ipc, -1), dim=1)
+                    err = torch.sum(torch.abs(real_mean - syn_mean))
                 elif (err_type == "ANG_B"):
-                    rl = torch.mean(real.reshape(num_classes, args.batch_real, -1), dim=1).cpu()
+                    rl = torch.mean(real.reshape(num_classes, args.batch_real, -1), dim=1)
                     sy = torch.mean(syn.reshape(num_classes, args.ipc, -1), dim=1)
                     
-                    denom = (torch.sum(rl**2)**0.5).cpu() * (torch.sum(sy**2)**0.5).cpu()
-                    num = rl.cpu() * sy.cpu()
+                    denom = (torch.sum(rl**2)**0.5) * (torch.sum(sy**2)**0.5)
+                    num = rl * sy
                     err = torch.sum(torch.acos(num/denom))
                 return err
             
             ''' update synthetic data '''
-            loss = torch.tensor(0.0)
+            loss = torch.zeros((), device=args.device)
             mid_loss = 0
             out_loss = 0
 

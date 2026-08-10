@@ -74,7 +74,7 @@ class MultiEpochsDataLoader(torch.utils.data.DataLoader):
 class ClassDataLoader(MultiEpochsDataLoader):
     """Basic class loader (might be slow for processing data)"""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, device=None, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.nclass = self.dataset.nclass
@@ -85,11 +85,15 @@ class ClassDataLoader(MultiEpochsDataLoader):
             self.cls_idx, self.batch_size, drop_last=True
         )
 
+        # 设备由 NCFM 配置传入；未指定时才按当前环境自动选择。
+        self.device = torch.device(
+            device if device is not None else ("cuda" if torch.cuda.is_available() else "cpu")
+        )
         self.cls_targets = torch.tensor(
             [np.ones(self.batch_size) * c for c in range(self.nclass)],
             dtype=torch.long,
             requires_grad=False,
-            device="cuda",
+            device=self.device,
         )
 
     def class_sample(self, c, ipc=-1):
@@ -100,26 +104,29 @@ class ClassDataLoader(MultiEpochsDataLoader):
 
         data = torch.stack([self.dataset[i][0] for i in indices])
         target = torch.tensor([self.dataset.targets[i] for i in indices])
-        return data.cuda(), target.cuda()
+        return data.to(self.device), target.to(self.device)
 
     def sample(self):
         data, target = next(self.iterator)
         if self.convert != None:
             data = self.convert(data)
 
-        return data.cuda(), target.cuda()
+        return data.to(self.device), target.to(self.device)
 
 
 class ClassMemDataLoader:
     """Class loader with data on GPUs"""
 
     def __init__(self, dataset, batch_size, drop_last=False, device="cuda"):
-        self.device = device
+        self.device = torch.device(
+            device if device is not None else ("cuda" if torch.cuda.is_available() else "cpu")
+        )
         self.batch_size = batch_size
 
         self.dataset = dataset
-        self.data = [d[0].to(device) for d in dataset]  # uint8 data
-        self.targets = torch.tensor(dataset.targets, dtype=torch.long, device=device)
+        # 使用调用方传入的设备，CPU 冒烟测试不能默认访问 CUDA。
+        self.data = [d[0].to(self.device) for d in dataset]
+        self.targets = torch.tensor(dataset.targets, dtype=torch.long, device=self.device)
 
         sampler = torch.utils.data.SubsetRandomSampler([i for i in range(len(dataset))])
         self.batch_sampler = torch.utils.data.BatchSampler(
@@ -130,7 +137,7 @@ class ClassMemDataLoader:
         self.nclass = dataset.nclass
         self.cls_idx = [[] for _ in range(self.nclass)]
         for i in range(len(dataset)):
-            self.cls_idx[self.targets[i]].append(i)
+            self.cls_idx[int(self.targets[i].item())].append(i)
         self.class_sampler = ClassBatchSampler(
             self.cls_idx, self.batch_size, drop_last=True
         )

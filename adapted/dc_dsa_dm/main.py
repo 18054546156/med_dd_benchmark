@@ -38,10 +38,11 @@ def main():
     args.dsa = True if args.method == 'DSA' else False
 
     if not os.path.exists(args.data_path):
-        os.mkdir(args.data_path)
+        os.makedirs(args.data_path, exist_ok=True)
 
     if not os.path.exists(args.save_path):
-        os.mkdir(args.save_path)
+        # 允许从仓库根目录或算法子目录传入多级结果路径。
+        os.makedirs(args.save_path, exist_ok=True)
 
     eval_it_pool = np.arange(0, args.Iteration+1, 500).tolist() if args.eval_mode == 'S' or args.eval_mode == 'SS' else [args.Iteration] # The list of iterations when we evaluate models and record results.
     print('eval_it_pool: ', eval_it_pool)

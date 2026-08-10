@@ -1,0 +1,11 @@
+{
+  "dataset": "PathMNIST",
+  "source": {
+    "page": "https://github.com/MedMNIST/MedMNIST",
+    "download": "https://zenodo.org/records/10519652/files/pathmnist.npz?download=1"
+  },
+  "raw_file": "raw\\PathMNIST\\pathmnist.npz",
+  "prepared_file": "prepared\\PathMNIST\\pathmnist.npz",
+  "format": "MedMNIST NPZ; loader performs 28x28 -> 32x32 resize",
+  "md5": "a8b06965200029087d5bd730944a56c1"
+}

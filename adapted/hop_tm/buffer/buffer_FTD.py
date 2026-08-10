@@ -25,7 +25,7 @@ def main(args):
     print('Hyper-parameters: \n', args.__dict__)
 
     save_dir = os.path.join(args.buffer_path, args.dataset)
-    if args.dataset in ["PathMnist", "COVID"] and not args.zca:
+    if args.dataset in ["PathMnist", "PathMNIST", "COVID", "Kvasir"] and not args.zca:
         save_dir += "_NO_ZCA"
     save_dir = os.path.join(save_dir, args.model)
     if not os.path.exists(save_dir):

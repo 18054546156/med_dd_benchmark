@@ -2,12 +2,17 @@
 raw/
 
 # 下载数据、预处理图片和运行时产物不进入源码版本控制。
-data/*
-!data/prepared/
-!data/prepared/*/
-!data/prepared/*/manifest.json
+/data/*
+!/data/prepared/
+/data/prepared/*
+!/data/prepared/*/
+/data/prepared/*/*
+!/data/prepared/*/manifest.json
 buffers/
 results/
+wandb/
+adapted/*/wandb/
+adapted/*/logged_files/
 
 # Python 缓存、日志和本地环境文件。
 __pycache__/

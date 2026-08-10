@@ -107,6 +107,11 @@ class MedMNISTWrapper(Dataset):
         """把 classes、labels 等属性透传给底层 MedMNIST 数据集。"""
         if name == 'dataset':
             raise AttributeError(name)
+        if name == 'targets':
+            # torchvision/ImageFolder uses targets; MedMNIST uses labels.
+            labels = getattr(self.dataset, 'labels', None)
+            if labels is not None:
+                return [scalarize_label(label) for label in labels]
         return getattr(self.dataset, name)
 
 

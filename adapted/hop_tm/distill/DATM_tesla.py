@@ -139,7 +139,7 @@ def main(args):
     expert_dir = os.path.join(args.buffer_path, args.dataset)
     if args.dataset == "ImageNet":
         expert_dir = os.path.join(expert_dir, args.subset, str(args.res))
-    if args.dataset in ["CIFAR10", "CIFAR100"] and not args.zca:
+    if args.dataset in ["CIFAR10", "CIFAR100", "PathMnist", "PathMNIST", "COVID", "Kvasir"] and not args.zca:
         expert_dir += "_NO_ZCA"
     expert_dir = os.path.join(expert_dir, args.model)
     print("Expert Dir: {}".format(expert_dir))

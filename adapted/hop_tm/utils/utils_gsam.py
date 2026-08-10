@@ -10,6 +10,7 @@ import os
 import sys
 import kornia as K
 import tqdm
+from types import SimpleNamespace
 from torch.utils.data import Dataset, DataLoader
 from torchvision import datasets, transforms
 from scipy.ndimage.interpolation import rotate as scipyrotate
@@ -82,6 +83,17 @@ config = Config()
 
 
 def get_dataset(dataset, data_path, batch_size=1, args=None):
+    # 兼容直接调用 get_dataset 的最小验证和 buffer 入口。
+    if args is None:
+        args = SimpleNamespace(
+            zca=False,
+            device='cuda' if torch.cuda.is_available() else 'cpu',
+            workers=0,
+        )
+    elif not hasattr(args, 'zca'):
+        args.zca = False
+    if not hasattr(args, 'device'):
+        args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
     class_map = None
     loader_train_dict = None
     class_map_inv = None
@@ -617,7 +629,7 @@ def rand_scale(x, param):
             [0,  sy[i], 0],] for i in range(x.shape[0])]
     theta = torch.tensor(theta, dtype=torch.float)
     if param.batchmode: # batch-wise:
-        theta[:] = theta[0]
+        theta[:] = theta[0].clone()
     grid = F.affine_grid(theta, x.shape, align_corners=True).to(x.device)
     x = F.grid_sample(x, grid, align_corners=True)
     return x
@@ -631,7 +643,7 @@ def rand_rotate(x, param): # [-180, 180], 90: anticlockwise 90 degree
         [torch.sin(theta[i]), torch.cos(theta[i]),  0],]  for i in range(x.shape[0])]
     theta = torch.tensor(theta, dtype=torch.float)
     if param.batchmode: # batch-wise:
-        theta[:] = theta[0]
+        theta[:] = theta[0].clone()
     grid = F.affine_grid(theta, x.shape, align_corners=True).to(x.device)
     x = F.grid_sample(x, grid, align_corners=True)
     return x
@@ -642,7 +654,8 @@ def rand_flip(x, param):
     set_seed_DiffAug(param)
     randf = torch.rand(x.size(0), 1, 1, 1, device=x.device)
     if param.batchmode: # batch-wise:
-        randf[:] = randf[0]
+        # clone 避免 PyTorch 新版本检测到源/目标内存重叠。
+        randf[:] = randf[0].clone()
     return torch.where(randf < prob, x.flip(3), x)
 
 
@@ -651,7 +664,7 @@ def rand_brightness(x, param):
     set_seed_DiffAug(param)
     randb = torch.rand(x.size(0), 1, 1, 1, dtype=x.dtype, device=x.device)
     if param.batchmode:  # batch-wise:
-        randb[:] = randb[0]
+        randb[:] = randb[0].clone()
     x = x + (randb - 0.5)*ratio
     return x
 
@@ -662,7 +675,7 @@ def rand_saturation(x, param):
     set_seed_DiffAug(param)
     rands = torch.rand(x.size(0), 1, 1, 1, dtype=x.dtype, device=x.device)
     if param.batchmode:  # batch-wise:
-        rands[:] = rands[0]
+        rands[:] = rands[0].clone()
     x = (x - x_mean) * (rands * ratio) + x_mean
     return x
 
@@ -673,7 +686,7 @@ def rand_contrast(x, param):
     set_seed_DiffAug(param)
     randc = torch.rand(x.size(0), 1, 1, 1, dtype=x.dtype, device=x.device)
     if param.batchmode:  # batch-wise:
-        randc[:] = randc[0]
+        randc[:] = randc[0].clone()
     x = (x - x_mean) * (randc + ratio) + x_mean
     return x
 
@@ -687,8 +700,8 @@ def rand_crop(x, param):
     set_seed_DiffAug(param)
     translation_y = torch.randint(-shift_y, shift_y + 1, size=[x.size(0), 1, 1], device=x.device)
     if param.batchmode:  # batch-wise:
-        translation_x[:] = translation_x[0]
-        translation_y[:] = translation_y[0]
+        translation_x[:] = translation_x[0].clone()
+        translation_y[:] = translation_y[0].clone()
     grid_batch, grid_x, grid_y = torch.meshgrid(
         torch.arange(x.size(0), dtype=torch.long, device=x.device),
         torch.arange(x.size(2), dtype=torch.long, device=x.device),
@@ -709,8 +722,8 @@ def rand_cutout(x, param):
     set_seed_DiffAug(param)
     offset_y = torch.randint(0, x.size(3) + (1 - cutout_size[1] % 2), size=[x.size(0), 1, 1], device=x.device)
     if param.batchmode:  # batch-wise:
-        offset_x[:] = offset_x[0]
-        offset_y[:] = offset_y[0]
+        offset_x[:] = offset_x[0].clone()
+        offset_y[:] = offset_y[0].clone()
     grid_batch, grid_x, grid_y = torch.meshgrid(
         torch.arange(x.size(0), dtype=torch.long, device=x.device),
         torch.arange(cutout_size[0], dtype=torch.long, device=x.device),

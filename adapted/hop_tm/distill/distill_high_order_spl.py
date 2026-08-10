@@ -165,7 +165,7 @@ def main(args):
     print('%s training begins'%get_time())
 
     expert_dir = os.path.join(args.buffer_path, args.dataset)
-    if args.dataset in ["PathMnist", "COVID"] and not args.zca:
+    if args.dataset in ["PathMnist", "PathMNIST", "COVID", "Kvasir"] and not args.zca:
         expert_dir += "_NO_ZCA"
     expert_dir = os.path.join(expert_dir, args.model)
     print("Expert Dir: {}".format(expert_dir))
