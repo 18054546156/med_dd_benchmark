@@ -1,92 +1,65 @@
-# PathMNIST - MTT轨迹匹配 - IPC10 - 完整配置
-# 需要先运行buffer.py生成专家轨迹
+# MTT - PathMNIST - IPC10
+# 参数来源：raw/mtt-distillation/distill.py 与 raw/mtt-distillation/buffer.py。
+# CONTRACT：PathMNIST 为 3x32x32、9 类；这是统一数据合同，不是 MTT 作者医疗配置。
+# MTT 必须按 buffer -> distill 两阶段运行；不能复用 CIFAR 的专家轨迹。
 
 dataset: PathMNIST
 model: ConvNet
-
-# 数据集信息
 num_classes: 9
 channel: 3
 im_size: [32, 32]
 
-# Buffer生成配置（第一步）
+# 第一阶段：生成当前数据集专属专家轨迹。
 buffer:
   model: ConvNet
-  train_epochs: 200        # 训练epoch数（生成轨迹）
-  num_experts: 100         # 专家数量
-  buffer_path: ./buffers   # buffer保存路径
-  batch_train: 256         # 训练批大小
-  lr_teacher: 0.01         # 教师学习率
-  save_interval: 10        # 保存间隔
+  train_epochs: 50        # RAW：buffer.py 默认值
+  num_experts: 100        # RAW：buffer.py 默认值
+  buffer_path: buffers/mtt # 记录值；统一入口会传入仓库绝对路径
+  batch_train: 256        # RAW：buffer.py 默认值
+  batch_real: 256         # RAW：buffer.py 默认值
+  lr_teacher: 0.01        # RAW：buffer.py 默认值
+  save_interval: 10       # RAW：每 10 条轨迹保存一个文件
 
-# 蒸馏配置（第二步）
+# 第二阶段：使用上一步生成的轨迹蒸馏合成图像。
 distillation:
-  ipc: 10                  # Images Per Class
-  Iteration: 10000         # 蒸馏迭代次数
+  ipc: 10
+  Iteration: 5000         # RAW：distill.py 默认值
+  lr_img: 1000            # RAW：MTT 作者默认值，不能按 DC 学习率缩放
+  lr_lr: 1e-5             # RAW
+  lr_teacher: 0.01        # RAW
+  batch_real: 256         # RAW
+  batch_train: 256        # RAW
+  batch_syn: null         # RAW：null 表示使用完整合成 batch
+  expert_epochs: 3        # RAW
+  syn_steps: 20            # RAW
+  max_start_epoch: 25     # RAW
+  pix_init: real          # RAW：从真实图像初始化合成图像
+  dsa_strategy: color_crop_cutout_flip_scale_rotate # RAW
 
-  # 轨迹匹配参数
-  syn_steps: 50            # 合成步数（匹配的轨迹长度）
-  expert_epochs: 3         # 每次采样的专家epoch数
-
-  # 学习率
-  lr_img: 1.0              # 合成图像学习率
-  lr_lr: 1e-5              # 学习率的学习率（MTT特有）
-
-  # 批大小
-  batch_real: 256          # 真实数据批大小
-  batch_train: 256         # 训练批大小
-  batch_syn: None          # 合成批大小（None=使用所有合成数据）
-
-  # 采样策略
-  max_start_epoch: 40      # 最大起始epoch（从buffer中采样）
-
-# 网络配置
-network:
-  depth: 3                 # ConvNet深度
-  width: 128               # ConvNet宽度
-  norm_type: instance      # 归一化类型
-  activation: relu         # 激活函数
-
-# 优化器配置
-optimizer:
-  optimizer_img: sgd       # 图像优化器
-  momentum: 0.5            # 动量
-  weight_decay: 0.0005     # 权重衰减
-
-# 数据增强
 augmentation:
-  dsa: True                # 使用可微增强
-  dsa_strategy: "color_crop_cutout_flip_scale_rotate"
+  dsa: true               # RAW：MTT 的专家训练和蒸馏都使用 DSA
 
-# 评估配置
+# 下面是评估入口使用的参数；num_eval=5 是本 benchmark 的 RESOURCE 预算，
+# raw 默认更大时，应在实验记录中说明评估预算变化。
 evaluation:
-  num_eval: 5              # 评估次数
-  epoch_eval_train: 300    # 评估时训练轮数
-  eval_it: 500             # 评估间隔
-  eval_mode: "S"           # 评估模式（S/M/SS等）
+  num_eval: 5
+  eval_it: 100
+  epoch_eval_train: 1000
+  eval_mode: S
 
-# 初始化
-init: "real"               # 使用真实图像初始化
-
-# 设备和路径
+init: real
 device: cuda
 data_path: data/prepared
-buffer_path: ./buffers/PathMNIST
-save_path: ../results/mtt/PathMNIST/ipc10
-
-# Wandb（可选）
-wandb: False
-project: med_dd_pathmnist_mtt
-
-# 其他
+buffer_path: buffers/mtt
+save_path: results/mtt/PathMNIST/ipc10
+zca: false
 seed: 0
-save_images: True
 
-# MTT使用说明：
-# 1. 先运行buffer.py生成专家轨迹：
-#    python buffer.py --dataset PathMNIST --model ConvNet --train_epochs 200 --num_experts 100
-#
-# 2. 再运行distill.py进行蒸馏：
-#    python distill.py --dataset PathMNIST --ipc 10 --buffer_path ./buffers
-#
-# 3. Buffer文件通常较大(1-5GB)，确保有足够磁盘空间
+# network/optimizer 的结构记录不会自动覆盖 raw argparse；真正生效的参数由
+# scripts/run_config.py 显式映射，避免把不同算法强行统一。
+network:
+  depth: 3             # MIGRATION：PathMNIST 32x32 参考 CIFAR ConvNet
+  width: 128
+optimizer:
+  momentum: 0.5
+  weight_decay: 0.0005

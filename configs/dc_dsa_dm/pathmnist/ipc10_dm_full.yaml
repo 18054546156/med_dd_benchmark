@@ -1,0 +1,26 @@
+# DM - PathMNIST - IPC10
+# RAW 来源：raw/DatasetCondensation/main_DM.py；保留 distribution matching 流程。
+# CONTRACT：PathMNIST 统一为 3x32x32、9 类。
+
+dataset: PathMNIST
+method: DM
+model: ConvNet
+num_classes: 9
+channel: 3
+im_size: [32, 32]
+ipc: 10
+Iteration: 20000      # RAW
+lr_img: 1.0           # RAW
+lr_net: 0.01          # RAW
+batch_real: 256       # RAW
+batch_train: 256      # RAW
+init: real             # RAW
+dsa_strategy: color_crop_cutout_flip_scale_rotate # RAW
+eval_mode: S
+num_exp: 5
+num_eval: 5            # RESOURCE：raw=20
+epoch_eval_train: 300
+data_path: data/prepared
+save_path: results/dc_dsa_dm/PathMNIST/DM/ipc10
+device: auto
+seed: 0

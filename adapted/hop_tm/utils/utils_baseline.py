@@ -28,7 +28,12 @@ from medmnist import PathMNIST
 _shared_utils = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'utils'))
 if _shared_utils not in sys.path:
     sys.path.insert(0, _shared_utils)
-from medical_dataset_utils import MedMNISTWrapper, get_medmnist_root
+from medical_dataset_utils import (
+    MEDICAL_DATASET_SPECS,
+    MedMNISTWrapper,
+    get_medmnist_root,
+    load_medical_splits,
+)
 
 
 # Custom dataset class to load the resized images and labels
@@ -114,7 +119,26 @@ def get_dataset(dataset, data_path, batch_size=1, subset="imagenette", args=None
     loader_train_dict = None
     class_map_inv = None
 
-    if dataset in ('PathMnist', 'PathMNIST'):
+    # HoP-TM 的 FTD/buffer 和蒸馏阶段必须读取同一份 prepared 数据。
+    # 这里仅适配输入、标签和路径，high-order trajectory 逻辑保持原样。
+    medical_name = {'PathMnist': 'PathMNIST', 'PathMNIST': 'PathMNIST',
+                    'COVID': 'COVID', 'Kvasir': 'Kvasir'}.get(dataset)
+    if medical_name is not None:
+        spec = MEDICAL_DATASET_SPECS[medical_name]
+        splits = load_medical_splits(
+            medical_name, data_path, use_zca=bool(getattr(args, 'zca', False))
+        )
+        channel = spec['channel']
+        im_size = spec['im_size']
+        num_classes = spec['num_classes']
+        mean = spec['mean']
+        std = spec['std']
+        dst_train = splits['train']
+        dst_test = splits['test']
+        class_map = {x: x for x in range(num_classes)}
+        class_map_inv = {x: x for x in range(num_classes)}
+
+    elif dataset in ('PathMnist', 'PathMNIST'):
         channel = 3
         im_size = (32, 32)
         # im_size = (64, 64)

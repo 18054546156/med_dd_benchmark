@@ -24,11 +24,11 @@ python scripts/prepare_medical_data.py --data-root data prepare --dataset Kvasir
 
 ## 2. 固定属性
 
-| 数据集 | 通道 | 算法输入尺寸 | 类别数 | 训练集 | 测试集 | 标签格式 |
-|---|---:|---:|---:|---:|---:|---|
-| PathMNIST | 3 | `3 x 32 x 32` | 9 | 89996 | 7180 | Python `int` / batch `torch.long` |
-| COVID | 3 | `3 x 112 x 112` | 4 | 16933 | 4232 | ImageFolder 类别索引 |
-| Kvasir | 3 | `3 x 128 x 128` | 8 | 6400 | 1600 | ImageFolder 类别索引 |
+| 数据集 | 通道 | 算法输入尺寸 | 类别数 | 训练集 | 验证集 | 测试集 | 标签格式 |
+|---|---:|---:|---:|---:|---:|---:|---|
+| PathMNIST | 3 | `3 x 32 x 32` | 9 | 89996 | 10004 | 7180 | Python `int` / batch `torch.long` |
+| COVID | 3 | `3 x 112 x 112` | 4 | 14817 | 2116 | 4232 | ImageFolder 类别索引 |
+| Kvasir | 3 | `3 x 128 x 128` | 8 | 5600 | 800 | 1600 | ImageFolder 类别索引 |
 
 共享定义位于 `utils/medical_dataset_utils.py` 的 `MEDICAL_DATASET_SPECS`。PathMNIST 的 MedMNIST `ndarray([k])` 必须先标量化；ImageFolder 的类别索引按目录排序得到。
 
@@ -38,8 +38,10 @@ python scripts/prepare_medical_data.py --data-root data prepare --dataset Kvasir
 data/prepared/
   PathMNIST/pathmnist.npz
   COVID/train/{COVID,Lung_Opacity,Normal,Viral_Pneumonia}/*.png
+  COVID/val/{COVID,Lung_Opacity,Normal,Viral_Pneumonia}/*.png
   COVID/test/{COVID,Lung_Opacity,Normal,Viral_Pneumonia}/*.png
   Kvasir/train/{8 class directories}/*
+  Kvasir/val/{8 class directories}/*
   Kvasir/test/{8 class directories}/*
 ```
 
@@ -54,4 +56,3 @@ prepared 数据只负责统一文件布局和可复现划分。各官方算法�
 - NCFM：先按 YAML 预训练模型，再由 condenser 读取预训练模型执行 condense/evaluation。
 
 因此 loader 通过、buffer 生成、蒸馏完成和最终准确率是四个不同状态，报告必须分别记录。
-

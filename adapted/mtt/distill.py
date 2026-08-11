@@ -237,7 +237,9 @@ def main(args):
 
                 # 离线 wandb 可能没有 run.name，使用 run.id 保证最小 smoke 也能落盘。
                 run_name = getattr(wandb.run, "name", None) or getattr(wandb.run, "id", "offline")
-                save_dir = os.path.join(".", "logged_files", args.dataset, run_name)
+                # 结果目录由配置传入；没有配置时才回退到原仓库的 logged_files。
+                save_root = getattr(args, "save_path", os.path.join(".", "logged_files"))
+                save_dir = os.path.join(save_root, args.dataset, run_name)
 
                 if not os.path.exists(save_dir):
                     os.makedirs(save_dir)
@@ -458,6 +460,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--data_path', type=str, default='data', help='dataset path')
     parser.add_argument('--buffer_path', type=str, default='./buffers', help='buffer path')
+    parser.add_argument('--save_path', type=str, default='./results/mtt', help='synthetic data output path')
 
     parser.add_argument('--expert_epochs', type=int, default=3, help='how many expert epochs the target params are')
     parser.add_argument('--syn_steps', type=int, default=20, help='how many steps to take on synthetic data')

@@ -1,85 +1,43 @@
-# Kvasir - CAFE特征对齐 - IPC10 - 完整配置
+# CAFE - Kvasir - IPC10
+# RAW 来源：raw/CAFE/distill.py；核心权重、学习率和更新流程按 RAW。
+# MIGRATION：Kvasir 原图尺寸不固定，统一为 3x128x128、8 类；不是作者官方设置。
+# batch=64 是 RESOURCE，原因是特征对齐在 128x128 上显存开销更高。
 
 dataset: Kvasir
 method: CAFE
 model: ConvNet
-
-# 数据集信息
 num_classes: 8
 channel: 3
 im_size: [128, 128]
 
-# 蒸馏参数
 ipc: 10
-Iteration: 8000
-lr_img: 100.0              # 大尺寸图像
-batch_real: 64
-batch_train: 64
+Iteration: 2000       # RAW
+lr_img: 0.1           # RAW；不因 128x128 擅自放大
+lr_net: 0.01          # RAW
+batch_real: 64        # RESOURCE：raw=256
+batch_train: 64       # RESOURCE：raw=256
+init: noise            # RAW
+dsa_strategy: None     # RAW
 
-# CAFE特定参数
-cafe:
-  # 特征对齐参数
-  alpha: 0.5               # 特征对齐损失权重
-  beta: 0.5                # 梯度匹配损失权重
+first_weight: 1.0     # RAW
+second_weight: 1.0    # RAW
+third_weight: 0.1     # RAW
+fourth_weight: 0.1    # RAW
+inner_weight: 0.01    # RAW
+lambda_1: 0.04        # RAW
+lambda_2: 0.03        # RAW
 
-  # 特征提取
-  feature_layers: [3, 4, 5] # 更深层
-  feature_type: "embedding"
-
-  # 对比学习参数
-  temperature: 0.5
-  contrast_mode: "all"
-
-  # 特征对齐方式
-  align_type: "mse"
-  normalize_features: True
-
-# 网络参数
-network:
-  depth: 5                 # 大尺寸需要更深
-  width: 128
-  norm_type: instance
-  activation: relu
-
-# 优化器参数
-optimizer:
-  optimizer_img: "sgd"
-  momentum: 0.5
-  lr_teacher: 0.01
-  weight_decay: 0.0005
-
-# 数据增强
-augmentation:
-  dsa: True
-  dsa_strategy: "color_crop_cutout_flip_scale_rotate"
-
-# 评估参数
 evaluation:
-  num_exp: 5
-  num_eval: 5
+  eval_mode: S
+  num_exp: 1           # RESOURCE
+  num_eval: 5          # RESOURCE
   epoch_eval_train: 300
-  eval_pool: "average"
-  eval_it: 400
 
-# 初始化
-init: "real"
+cafe:
+  feature_layers: [2, 3, 4]
+  note: "说明性记录；当前 raw CLI 不直接消费 feature_layers"
 
-# 设备和路径
-device: "cuda"
-data_path: "data/prepared"
-save_path: "../results/cafe/Kvasir/ipc10"
-
-# Wandb
-wandb: False
-project: "med_dd_kvasir_cafe"
-
-# 其他
+device: cuda
+data_path: data/prepared
+save_path: results/cafe/Kvasir/ipc10
 seed: 0
-save_images: True
-save_features: True
-
-# Kvasir特定：
-# 1. 128x128大尺寸，需要更多GPU内存
-# 2. 特征维度大，特征对齐计算量大
-# 3. 建议batch_train=64
-# 4. 可能需要更多迭代次数

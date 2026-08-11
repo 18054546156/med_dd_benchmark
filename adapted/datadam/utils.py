@@ -24,7 +24,13 @@ from torchvision.utils import save_image
 _shared_utils = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'utils'))
 if _shared_utils not in sys.path:
     sys.path.insert(0, _shared_utils)
-from medical_dataset_utils import MedMNISTWrapper, get_medmnist_root
+from medical_dataset_utils import (
+    MEDICAL_DATASET_SPECS,
+    MedMNISTWrapper,
+    get_medmnist_root,
+    load_medical_splits,
+    resolve_medical_data_root,
+)
 
 # Attention Module
 def get_attention(feature_set, param=0, exp=4, norm='l2'):
@@ -66,7 +72,25 @@ def get_attention(feature_set, param=0, exp=4, norm='l2'):
     
     
 def get_dataset(dataset, data_path, args):
-    if dataset == 'MNIST':
+    # DataDAM 不使用 raw/Initial_Synthetic_Dataset 的 CIFAR 初始化；
+    # 医疗数据直接从共享 prepared 层按类别随机抽取真实样本初始化。
+    medical_name = {'PathMnist': 'PathMNIST', 'PathMNIST': 'PathMNIST',
+                    'COVID': 'COVID', 'Kvasir': 'Kvasir'}.get(dataset)
+    if medical_name is not None:
+        spec = MEDICAL_DATASET_SPECS[medical_name]
+        splits = load_medical_splits(
+            medical_name, data_path, use_zca=bool(getattr(args, 'zca', False))
+        )
+        channel = spec['channel']
+        im_size = spec['im_size']
+        num_classes = spec['num_classes']
+        mean = spec['mean']
+        std = spec['std']
+        dst_train = splits['train']
+        dst_test = splits['test']
+        class_names = getattr(dst_train, 'classes', [str(c) for c in range(num_classes)])
+
+    elif dataset == 'MNIST':
         channel = 1
         im_size = (28, 28)
         num_classes = 10
@@ -271,14 +295,10 @@ def get_dataset(dataset, data_path, args):
         ])
 
         # 从ImageFolder格式加载数据
-        dst_train = datasets.ImageFolder(
-            os.path.join(data_path, 'COVID', 'train'),
-            transform=transform
-        )
-        dst_test = datasets.ImageFolder(
-            os.path.join(data_path, 'COVID', 'test'),
-            transform=transform
-        )
+        # 所有算法都从共享 prepared/COVID 读取，避免各算法使用不同副本。
+        medical_root = resolve_medical_data_root(data_path, 'COVID')
+        dst_train = datasets.ImageFolder(medical_root / 'train', transform=transform)
+        dst_test = datasets.ImageFolder(medical_root / 'test', transform=transform)
 
         class_names = dst_train.classes
 
@@ -303,14 +323,10 @@ def get_dataset(dataset, data_path, args):
         ])
 
         # 从ImageFolder格式加载数据
-        dst_train = datasets.ImageFolder(
-            os.path.join(data_path, 'Kvasir', 'train'),
-            transform=transform
-        )
-        dst_test = datasets.ImageFolder(
-            os.path.join(data_path, 'Kvasir', 'test'),
-            transform=transform
-        )
+        # Kvasir 与 COVID 使用相同的 ImageFolder train/val/test 合同。
+        medical_root = resolve_medical_data_root(data_path, 'Kvasir')
+        dst_train = datasets.ImageFolder(medical_root / 'train', transform=transform)
+        dst_test = datasets.ImageFolder(medical_root / 'test', transform=transform)
 
         class_names = dst_train.classes
 

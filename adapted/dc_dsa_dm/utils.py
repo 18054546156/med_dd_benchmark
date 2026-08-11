@@ -20,10 +20,31 @@ from networks import MLP, ConvNet, LeNet, AlexNet, AlexNetBN, VGG11, VGG11BN, Re
 _shared_utils = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'utils'))
 if _shared_utils not in sys.path:
     sys.path.insert(0, _shared_utils)
-from medical_dataset_utils import MedMNISTWrapper, get_medmnist_root
+from medical_dataset_utils import (
+    MedMNISTWrapper,
+    MEDICAL_DATASET_SPECS,
+    get_medmnist_root,
+    load_medical_splits,
+    resolve_medical_data_root,
+)
 
 def get_dataset(dataset, data_path):
-    if dataset == 'MNIST':
+    # 医疗数据统一从 data/prepared 读取；DC、DSA、DM 仍共享原始数据接口。
+    medical_name = {'PathMnist': 'PathMNIST', 'PathMNIST': 'PathMNIST',
+                    'COVID': 'COVID', 'Kvasir': 'Kvasir'}.get(dataset)
+    if medical_name is not None:
+        spec = MEDICAL_DATASET_SPECS[medical_name]
+        splits = load_medical_splits(medical_name, data_path)
+        channel = spec['channel']
+        im_size = spec['im_size']
+        num_classes = spec['num_classes']
+        mean = spec['mean']
+        std = spec['std']
+        dst_train = splits['train']
+        dst_test = splits['test']
+        class_names = getattr(dst_train, 'classes', [str(c) for c in range(num_classes)])
+
+    elif dataset == 'MNIST':
         channel = 1
         im_size = (28, 28)
         num_classes = 10
@@ -163,14 +184,9 @@ def get_dataset(dataset, data_path):
 
         # 从ImageFolder格式加载数据
         # 期望目录结构: data_path/COVID/train/ 和 data_path/COVID/test/
-        dst_train = datasets.ImageFolder(
-            os.path.join(data_path, 'COVID', 'train'),
-            transform=transform
-        )
-        dst_test = datasets.ImageFolder(
-            os.path.join(data_path, 'COVID', 'test'),
-            transform=transform
-        )
+        medical_root = resolve_medical_data_root(data_path, 'COVID')
+        dst_train = datasets.ImageFolder(medical_root / 'train', transform=transform)
+        dst_test = datasets.ImageFolder(medical_root / 'test', transform=transform)
 
         class_names = dst_train.classes
 
@@ -197,14 +213,9 @@ def get_dataset(dataset, data_path):
 
         # 从ImageFolder格式加载数据
         # 期望目录结构: data_path/Kvasir/train/ 和 data_path/Kvasir/test/
-        dst_train = datasets.ImageFolder(
-            os.path.join(data_path, 'Kvasir', 'train'),
-            transform=transform
-        )
-        dst_test = datasets.ImageFolder(
-            os.path.join(data_path, 'Kvasir', 'test'),
-            transform=transform
-        )
+        medical_root = resolve_medical_data_root(data_path, 'Kvasir')
+        dst_train = datasets.ImageFolder(medical_root / 'train', transform=transform)
+        dst_test = datasets.ImageFolder(medical_root / 'test', transform=transform)
 
         class_names = dst_train.classes
 

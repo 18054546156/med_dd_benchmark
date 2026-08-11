@@ -1,89 +1,59 @@
-# Kvasir - MTT轨迹匹配 - IPC10 - 完整配置
-# 需要先运行buffer.py生成专家轨迹
+# MTT - Kvasir - IPC10
+# 参数来源：raw/mtt-distillation/distill.py 与 raw/mtt-distillation/buffer.py。
+# MIGRATION：Kvasir 原图尺寸不固定，本 benchmark 统一为 3x128x128、8 类。
+# batch=64 是 RESOURCE；lr_img、Iteration、syn_steps 等核心参数保持 RAW。
 
 dataset: Kvasir
 model: ConvNet
-
-# 数据集信息
 num_classes: 8
 channel: 3
 im_size: [128, 128]
 
-# Buffer生成配置（第一步）
 buffer:
   model: ConvNet
-  train_epochs: 200        # 训练epoch数
-  num_experts: 80          # 专家数量
-  buffer_path: ./buffers   # buffer保存路径
-  batch_train: 64          # 训练批大小（大图像）
-  lr_teacher: 0.01         # 教师学习率
-  save_interval: 10        # 保存间隔
+  train_epochs: 50        # RAW
+  num_experts: 100        # RAW
+  buffer_path: buffers/mtt
+  batch_train: 64         # RESOURCE：128x128 显存适配，raw=256
+  batch_real: 64          # RESOURCE
+  lr_teacher: 0.01        # RAW
+  save_interval: 10       # RAW
 
-# 蒸馏配置（第二步）
 distillation:
-  ipc: 10                  # Images Per Class
-  Iteration: 8000          # 蒸馏迭代次数
+  ipc: 10
+  Iteration: 5000         # RAW
+  lr_img: 1000            # RAW：MTT 作者默认值
+  lr_lr: 1e-5             # RAW
+  lr_teacher: 0.01        # RAW
+  batch_real: 64          # RESOURCE：raw=256
+  batch_train: 64         # RESOURCE：raw=256
+  batch_syn: null
+  expert_epochs: 3        # RAW
+  syn_steps: 20            # RAW
+  max_start_epoch: 25     # RAW
+  pix_init: real          # RAW
+  dsa_strategy: color_crop_cutout_flip_scale_rotate # RAW
 
-  # 轨迹匹配参数
-  syn_steps: 50            # 合成步数
-  expert_epochs: 3         # 每次采样的专家epoch数
-
-  # 学习率
-  lr_img: 100.0            # 合成图像学习率（大尺寸）
-  lr_lr: 1e-5              # 学习率的学习率
-
-  # 批大小
-  batch_real: 64           # 真实数据批大小
-  batch_train: 64          # 训练批大小
-  batch_syn: None          # 合成批大小
-
-  # 采样策略
-  max_start_epoch: 40      # 最大起始epoch
-
-# 网络配置
-network:
-  depth: 5                 # ConvNet深度（大尺寸需要更深）
-  width: 128               # ConvNet宽度
-  norm_type: instance      # 归一化类型
-  activation: relu         # 激活函数
-
-# 优化器配置
-optimizer:
-  optimizer_img: sgd       # 图像优化器
-  momentum: 0.5            # 动量
-  weight_decay: 0.0005     # 权重衰减
-
-# 数据增强（重要！）
 augmentation:
-  dsa: True                # 使用可微增强
-  dsa_strategy: "color_crop_cutout_flip_scale_rotate"
+  dsa: true
 
-# 评估配置
 evaluation:
-  num_eval: 5              # 评估次数
-  epoch_eval_train: 300    # 评估时训练轮数
-  eval_it: 400             # 评估间隔
-  eval_mode: "S"           # 评估模式
+  num_eval: 5             # RESOURCE
+  eval_it: 100
+  epoch_eval_train: 1000
+  eval_mode: S
 
-# 初始化
-init: "real"               # 使用真实图像初始化
-
-# 设备和路径
+init: real
 device: cuda
 data_path: data/prepared
-buffer_path: ./buffers/Kvasir
-save_path: ../results/mtt/Kvasir/ipc10
-
-# Wandb（可选）
-wandb: False
-project: med_dd_kvasir_mtt
-
-# 其他
+buffer_path: buffers/mtt
+save_path: results/mtt/Kvasir/ipc10
+zca: false
 seed: 0
-save_images: True
 
-# Kvasir特定注意：
-# 1. 图像尺寸大(128x128)，需要更多GPU内存
-# 2. Buffer文件会很大(>5GB)
-# 3. batch_train=64适合大图像
-# 4. 建议使用较大的lr_img (100)
+network:
+  depth: 5                # MIGRATION：128x128 的结构记录；入口以 model 为准
+  width: 128
+optimizer:
+  momentum: 0.5
+  weight_decay: 0.0005

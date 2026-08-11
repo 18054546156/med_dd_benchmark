@@ -25,7 +25,14 @@ from networks import MLP, ConvNet, LeNet, AlexNet, VGG11BN, VGG11, ResNet18, Res
 _shared_utils = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'utils'))
 if _shared_utils not in sys.path:
     sys.path.insert(0, _shared_utils)
-from medical_dataset_utils import MedMNISTWrapper, get_medmnist_root, scalarize_label
+from medical_dataset_utils import (
+    MEDICAL_DATASET_SPECS,
+    MedMNISTWrapper,
+    get_medmnist_root,
+    load_medical_splits,
+    resolve_medical_data_root,
+    scalarize_label,
+)
 
 
 def _build_class_loaders(dataset, num_classes, batch_size, num_workers):
@@ -255,14 +262,10 @@ def get_dataset(dataset, data_path, batch_size=1, subset="imagenette", args=None
             ])
 
         # 从ImageFolder格式加载数据
-        dst_train = datasets.ImageFolder(
-            os.path.join(data_path, 'COVID', 'train'),
-            transform=transform
-        )
-        dst_test = datasets.ImageFolder(
-            os.path.join(data_path, 'COVID', 'test'),
-            transform=transform
-        )
+        # MTT 的 buffer 必须读取共享 prepared 数据，不能复制其他算法的数据。
+        medical_root = resolve_medical_data_root(data_path, 'COVID')
+        dst_train = datasets.ImageFolder(medical_root / 'train', transform=transform)
+        dst_test = datasets.ImageFolder(medical_root / 'test', transform=transform)
 
         class_names = dst_train.classes
         class_map = {x: x for x in range(num_classes)}
@@ -299,14 +302,10 @@ def get_dataset(dataset, data_path, batch_size=1, subset="imagenette", args=None
             ])
 
         # 从ImageFolder格式加载数据
-        dst_train = datasets.ImageFolder(
-            os.path.join(data_path, 'Kvasir', 'train'),
-            transform=transform
-        )
-        dst_test = datasets.ImageFolder(
-            os.path.join(data_path, 'Kvasir', 'test'),
-            transform=transform
-        )
+        # Kvasir 的模型、轨迹和归一化都独立于 PathMNIST/COVID。
+        medical_root = resolve_medical_data_root(data_path, 'Kvasir')
+        dst_train = datasets.ImageFolder(medical_root / 'train', transform=transform)
+        dst_test = datasets.ImageFolder(medical_root / 'test', transform=transform)
 
         class_names = dst_train.classes
         class_map = {x: x for x in range(num_classes)}
@@ -650,7 +649,29 @@ def get_daparam(dataset, model, model_eval, ipc):
     dc_aug_param['noise'] = 0.001
     dc_aug_param['strategy'] = 'none'
 
-    if dataset == 'MNIST':
+    # MTT 的 buffer 必须基于共享 prepared 数据重新生成；这里保留 train/test
+    # 返回接口，val 由共享 loader 固定读取并留给外部评估流程使用。
+    medical_name = {'PathMnist': 'PathMNIST', 'PathMNIST': 'PathMNIST',
+                    'COVID': 'COVID', 'Kvasir': 'Kvasir'}.get(dataset)
+    if medical_name is not None:
+        spec = MEDICAL_DATASET_SPECS[medical_name]
+        splits = load_medical_splits(
+            medical_name, data_path, use_zca=bool(getattr(args, 'zca', False))
+        )
+        channel = spec['channel']
+        im_size = spec['im_size']
+        num_classes = spec['num_classes']
+        mean = spec['mean']
+        std = spec['std']
+        dst_train = splits['train']
+        dst_test = splits['test']
+        class_names = getattr(dst_train, 'classes', [str(c) for c in range(num_classes)])
+        class_map = {x: x for x in range(num_classes)}
+        loader_train_dict = _build_class_loaders(
+            dst_train, num_classes, batch_size, loader_workers
+        )
+
+    elif dataset == 'MNIST':
         dc_aug_param['strategy'] = 'crop_scale_rotate'
 
     if model_eval in ['ConvNetBN']:  # Data augmentation makes model training with Batch Norm layer easier.

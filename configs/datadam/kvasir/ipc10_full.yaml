@@ -1,80 +1,41 @@
-# Kvasir - DataDAM注意力匹配 - IPC10 - 完整配置
+# DataDAM - Kvasir - IPC10
+# RAW 来源：raw/DataDAM/main_DataDAM.py。
+# MIGRATION：Kvasir 原图尺寸不固定，统一 resize 到 3x128x128、8 类。
+# 其余核心参数保持 RAW；128x128 不是 DataDAM 作者的 Kvasir 官方设置。
 
 dataset: Kvasir
 method: DataDAM
 model: ConvNet
-
-# 数据集信息
 num_classes: 8
 channel: 3
 im_size: [128, 128]
 
-# 蒸馏参数
 ipc: 10
-Iteration: 8000
-lr_img: 100.0              # 大尺寸图像
-batch_real: 64
-batch_train: 64
+Iteration: 20000       # RAW
+lr_img: 1              # RAW；不因 128x128 擅自改成 100
+lr_net: 0.01           # RAW
+batch_real: 64         # RAW
+batch_train: 64        # RAW
+init: real              # RAW
+dsa_strategy: color_crop_cutout_flip_scale_rotate # RAW
+task_balance: 0.01     # RAW
+zca: false
 
-# DataDAM特定参数
-attention:
-  attn_type: "spatial"     # 空间注意力
-  match_type: "mse"
-  attn_layers: [3, 4, 5]   # 更深层（深度5）
-  lambda_attn: 1.0
-  lambda_grad: 0.5
-
-# 注意力提取配置
-extract_attention:
-  method: "gradcam"
-  normalize: True
-  threshold: 0.1
-
-# 网络参数
-network:
-  depth: 5                 # 大尺寸需要更深
-  width: 128
-  norm_type: instance
-  activation: relu
-
-# 优化器参数
-optimizer:
-  optimizer_img: "sgd"
-  momentum: 0.5
-  lr_teacher: 0.01
-  weight_decay: 0.0005
-
-# 数据增强
-augmentation:
-  dsa: True
-  dsa_strategy: "color_crop_cutout_flip_scale_rotate"
-
-# 评估参数
 evaluation:
-  num_exp: 5
-  num_eval: 5
-  epoch_eval_train: 300
-  eval_pool: "average"
-  eval_it: 400
+  eval_mode: SS
+  num_exp: 1            # RESOURCE
+  num_eval: 10          # RAW
+  epoch_eval_train: 1800 # RAW
 
-# 初始化
-init: "real"
+# 说明性字段：不被当前 raw CLI 直接消费。
+attention:
+  attn_type: spatial
+  match_type: mse
+  note: "Kvasir 注意力分析记录，不等于新增损失项"
+extract_attention:
+  note: "raw DataDAM 入口没有独立 gradcam 参数"
 
-# 设备和路径
-device: "cuda"
-data_path: "data/prepared"
-save_path: "../results/datadam/Kvasir/ipc10"
-
-# Wandb
-wandb: False
-project: "med_dd_kvasir_datadam"
-
-# 其他
+device: cuda
+data_path: data/prepared
+save_path: results/datadam/Kvasir/ipc10
 seed: 0
-save_images: True
-save_attention_maps: True
-
-# Kvasir特定：
-# 1. 128x128大尺寸，需要更多GPU内存
-# 2. 注意力图也很大，保存时注意磁盘空间
-# 3. 建议batch_train=64

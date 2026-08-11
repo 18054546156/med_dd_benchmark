@@ -1,41 +1,43 @@
-# HoP-TM PathMNIST configuration.
-# Buffer generation uses adapted/hop_tm/buffer/buffer_FTD.py.
+# HoP-TM - PathMNIST - IPC10
+# RAW 来源：raw/HoP-TM/exp_configs/PathMnist/ConvIN/IPC10_high_order.yaml。
+# CONTRACT：PathMNIST 统一为 3x32x32、9 类；核心 high-order trajectory 参数按 RAW。
+# 必须先生成 PathMNIST 专属 buffer，再运行 distill；不能复用 COVID/CIFAR buffer。
+
 dataset: PathMNIST
+num_classes: 9
+channel: 3
+im_size: [32, 32]
 device: [0]
 model: ConvNet
 ipc: 10
-syn_steps: 80
-expert_epochs: 2
-lr_img: 1
-lr_teacher: 0.01
-buffer_path: ../../buffers
+syn_steps: 80          # RAW
+expert_epochs: 2       # RAW
+lr_img: 10             # RAW
+lr_teacher: 0.01       # RAW
+buffer_path: buffers/hop_tm
 data_path: data/prepared
-ema_decay: 0.995
-Iteration: 10000
-batch_syn: 10
-batch_train: 128
+ema_decay: 0.995       # RAW
+Iteration: 10000       # RAW
+batch_syn: 10          # RAW
+batch_train: 128       # RAW
+batch_real: 256        # RAW：buffer_FTD.py 默认值
+num_experts: 100       # RAW：buffer_FTD.py 默认值
+train_epochs: 100      # RAW：buffer_FTD.py 默认值
 project: pathmnist_high_order
-wandb: false
-num_eval: 5
-eval_it: 500
-skip_first_eva: true
-pix_init: real
-high_order: true
-base_threshold: 5e-9
-growing_factor: 1.5
-lamb: 0.5
-min_start_epoch: 0
-max_start_epoch: 4
-lr_lr: 1e-7
+num_eval: 1             # RAW：作者配置
+eval_it: 500            # RAW
+skip_first_eva: true    # RAW
+pix_init: real          # RAW
+high_order: true        # RAW
+base_threshold: 5e-9    # RAW
+growing_factor: 1.5     # RAW
+lamb: 0.5               # RAW
+min_start_epoch: 0      # RAW
+max_start_epoch: 4      # RAW
+lr_lr: 1e-7             # RAW
 zca: false
-dsa: true
+dsa: true               # RAW 默认值
 dsa_strategy: color_crop_cutout_flip_scale_rotate
-depth: 3
-width: 128
-norm_type: instance
-optimizer: sgd
-momentum: 0.5
-weight_decay: 0.0005
 save_path: results/hop_tm/PathMNIST/ipc10
 save_images: true
-save_interval: 1000
+save_interval: 10

@@ -260,7 +260,9 @@ def main(args):
 
                 # 离线 wandb 可能没有 run.name，使用 run.id 保证 smoke 结果可以保存。
                 run_name = getattr(wandb.run, "name", None) or getattr(wandb.run, "id", "offline")
-                save_dir = os.path.join(".", "logged_files", args.dataset, run_name)
+                # 结果目录由医疗迁移配置控制，避免 HoP-TM 输出散落在算法目录。
+                save_root = getattr(args, "save_path", os.path.join(".", "logged_files"))
+                save_dir = os.path.join(save_root, args.dataset, run_name)
 
                 if not os.path.exists(save_dir):
                     os.makedirs(save_dir)

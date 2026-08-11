@@ -337,7 +337,12 @@ def materialize_image(source: Path, target: Path) -> dict:
             shutil.copy2(source, target)
         else:
             # 医疗 X 光图常见灰度模式，统一为三通道以匹配 ConvNet 输入合同。
-            image.convert('RGB').save(target)
+            # PNG 使用较低压缩级别；这里是 prepared 缓存，不改变图像像素语义，
+            # 但可以显著减少首次物化整套数据所需的时间。
+            if target.suffix.lower() == '.png':
+                image.convert('RGB').save(target, compress_level=1)
+            else:
+                image.convert('RGB').save(target)
         with Image.open(target) as converted:
             width, height = converted.size
     return {
@@ -356,11 +361,14 @@ def prepare_imagefolder(
     source_dir: Path,
     seed: int,
     test_ratio: float,
+    val_ratio: float,
     overwrite: bool,
 ) -> None:
-    """按类别固定随机划分并输出 ImageFolder train/test。"""
-    if not 0 < test_ratio < 1:
-        raise ValueError('--test-ratio 必须在 0 和 1 之间')
+    """按类别固定随机划分并输出共享的 ImageFolder train/val/test。"""
+    if not 0 < test_ratio < 1 or not 0 <= val_ratio < 1:
+        raise ValueError('--test-ratio 和 --val-ratio 必须在合法范围内')
+    if test_ratio + val_ratio >= 1:
+        raise ValueError('--test-ratio + --val-ratio 必须小于 1')
     if not source_dir.exists():
         raise FileNotFoundError(f'原始解压目录不存在: {source_dir}')
 
@@ -375,7 +383,14 @@ def prepare_imagefolder(
         shuffled = list(files)
         rng.shuffle(shuffled)
         test_count = max(1, round(len(shuffled) * test_ratio))
-        split_files = {'test': shuffled[:test_count], 'train': shuffled[test_count:]}
+        val_count = max(1, round(len(shuffled) * val_ratio)) if val_ratio else 0
+        test_end = test_count
+        val_end = test_end + val_count
+        split_files = {
+            'test': shuffled[:test_end],
+            'val': shuffled[test_end:val_end],
+            'train': shuffled[val_end:],
+        }
         if not split_files['train']:
             raise ValueError(f'{dataset}/{class_name} 图片太少，无法保留 train 样本')
 
@@ -407,6 +422,7 @@ def prepare_imagefolder(
             'source_dir': str(source_dir),
             'seed': seed,
             'test_ratio': test_ratio,
+            'val_ratio': val_ratio,
             'classes': list(class_images),
             'counts': dict(counts),
             'files': manifest_files,
@@ -426,9 +442,9 @@ def write_manifest(prepared_dir: Path, payload: dict) -> None:
 
 
 def validate_imagefolder(prepared_dir: Path, dataset: str) -> None:
-    """验证 prepared ImageFolder 的类别、图片模式和 train/test 非空。"""
+    """验证 prepared ImageFolder 的类别、图片模式和三个 split 非空。"""
     expected = COVID_CLASSES if dataset == 'COVID' else KVASIR_CLASSES
-    for split in ('train', 'test'):
+    for split in ('train', 'val', 'test'):
         for class_name in expected:
             class_dir = prepared_dir / split / class_name
             if not class_dir.exists():
@@ -473,6 +489,7 @@ def build_parser() -> argparse.ArgumentParser:
     prepare.add_argument('--source-dir', type=Path, help='COVID/Kvasir 官方解压目录')
     prepare.add_argument('--seed', type=int, default=20260810)
     prepare.add_argument('--test-ratio', type=float, default=0.2)
+    prepare.add_argument('--val-ratio', type=float, default=0.1)
     prepare.add_argument('--materialize', choices=['copy', 'hardlink'], default='copy')
     prepare.add_argument('--overwrite', action='store_true')
 
@@ -503,6 +520,7 @@ def main() -> int:
                 args.source_dir.resolve(),
                 args.seed,
                 args.test_ratio,
+                args.val_ratio,
                 args.overwrite,
             )
     elif args.command == 'validate':

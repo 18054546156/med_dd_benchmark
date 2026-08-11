@@ -1,84 +1,42 @@
-# COVID - CAFE特征对齐 - IPC10 - 完整配置
+# CAFE - COVID - IPC10
+# RAW 来源：raw/CAFE/distill.py；核心权重和双层优化保持作者默认。
+# CONTRACT：COVID 为 3x112x112、4 类；batch=128 是 RESOURCE，raw=256。
 
 dataset: COVID
 method: CAFE
 model: ConvNet
-
-# 数据集信息
 num_classes: 4
 channel: 3
 im_size: [112, 112]
 
-# 蒸馏参数
 ipc: 10
-Iteration: 5000            # 小数据集减少迭代
-lr_img: 10.0               # 中等尺寸图像
-batch_real: 128
-batch_train: 128
+Iteration: 2000       # RAW
+lr_img: 0.1           # RAW；不因 112x112 擅自放大
+lr_net: 0.01          # RAW
+batch_real: 128       # RESOURCE：raw=256
+batch_train: 128      # RESOURCE：raw=256
+init: noise            # RAW
+dsa_strategy: None     # RAW
 
-# CAFE特定参数
-cafe:
-  # 特征对齐参数
-  alpha: 0.6               # 增大特征对齐权重（小数据集）
-  beta: 0.4                # 减小梯度匹配权重
+first_weight: 1.0     # RAW
+second_weight: 1.0    # RAW
+third_weight: 0.1     # RAW
+fourth_weight: 0.1    # RAW
+inner_weight: 0.01    # RAW
+lambda_1: 0.04        # RAW
+lambda_2: 0.03        # RAW
 
-  # 特征提取
-  feature_layers: [2, 3, 4] # 更多层
-  feature_type: "embedding"
-
-  # 对比学习参数
-  temperature: 0.5
-  contrast_mode: "all"
-
-  # 特征对齐方式
-  align_type: "mse"
-  normalize_features: True
-
-# 网络参数
-network:
-  depth: 4                 # 中等深度
-  width: 128
-  norm_type: instance
-  activation: relu
-
-# 优化器参数
-optimizer:
-  optimizer_img: "sgd"
-  momentum: 0.5
-  lr_teacher: 0.01
-  weight_decay: 0.001      # 增大权重衰减
-
-# 数据增强（重要）
-augmentation:
-  dsa: True
-  dsa_strategy: "color_crop_cutout_flip_scale_rotate"
-
-# 评估参数
 evaluation:
-  num_exp: 5
-  num_eval: 5
+  eval_mode: S
+  num_exp: 1           # RESOURCE
+  num_eval: 5          # RESOURCE
   epoch_eval_train: 300
-  eval_pool: "average"
-  eval_it: 250
 
-# 初始化
-init: "real"
+cafe:
+  feature_layers: [2, 3]
+  note: "说明性记录；当前 raw CLI 不直接消费 feature_layers"
 
-# 设备和路径
-device: "cuda"
-data_path: "data/prepared"
-save_path: "../results/cafe/COVID/ipc10"
-
-# Wandb
-wandb: False
-project: "med_dd_covid_cafe"
-
-# 其他
+device: cuda
+data_path: data/prepared
+save_path: results/cafe/COVID/ipc10
 seed: 0
-save_images: True
-save_features: True
-
-# COVID特定：
-# 1. 小数据集，增大特征对齐权重alpha
-# 2. 需要强数据增强
-# 3. 类别不均衡需要注意

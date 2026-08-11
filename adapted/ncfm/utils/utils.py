@@ -31,7 +31,11 @@ import os as os_module
 _utils_path = os_module.path.abspath(os_module.path.join(os_module.path.dirname(__file__), '..', '..', '..', 'utils'))
 if _utils_path not in sys.path:
     sys.path.insert(0, _utils_path)
-from medical_dataset_utils import MedMNISTWrapper, get_medmnist_root
+from medical_dataset_utils import (
+    MedMNISTWrapper,
+    get_medmnist_root,
+    load_medical_splits,
+)
 from medical_dataset_utils import MEDICAL_DATASET_SPECS, scalarize_label
 
 
@@ -77,40 +81,23 @@ def _attach_dataset_metadata(dataset, nclass):
     return dataset
 
 
-def _load_medical_dataset(dataset, data_dir, size):
-    """加载一个医疗数据集并返回 NCFM 需要的 train/validation pair。"""
+def _load_medical_dataset(dataset, data_dir, size, evaluation_split="val"):
+    """加载共享 prepared 数据，返回 NCFM 使用的 train/validation pair。
+
+    默认 validation 固定读取 prepared/val；最终 Evaluation 显式切换到 test。
+    """
     spec_name = {
         "pathmnist": "PathMNIST",
         "covid": "COVID",
         "kvasir": "Kvasir",
     }[dataset]
     spec = MEDICAL_DATASET_SPECS[spec_name]
-    image_size = int(size or spec["im_size"][0])
-    transform = transforms.Compose([
-        transforms.Resize((image_size, image_size)),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=spec["mean"], std=spec["std"]),
-    ])
-    medical_root = _resolve_medical_data_root(data_dir, dataset)
-
-    if dataset == "pathmnist":
-        from medmnist import PathMNIST
-
-        medmnist_root = get_medmnist_root(medical_root)
-        train_dataset = MedMNISTWrapper(PathMNIST(
-            split="train", download=True, root=medmnist_root, transform=transform
-        ))
-        val_dataset = MedMNISTWrapper(PathMNIST(
-            split="test", download=True, root=medmnist_root, transform=transform
-        ))
-    else:
-        folder_name = "COVID" if dataset == "covid" else "Kvasir"
-        train_dataset = datasets.ImageFolder(
-            os.path.join(medical_root, folder_name, "train"), transform=transform
-        )
-        val_dataset = datasets.ImageFolder(
-            os.path.join(medical_root, folder_name, "test"), transform=transform
-        )
+    # 统一工具负责固定尺寸、归一化、标签标量化和 prepared 路径解析。
+    splits = load_medical_splits(spec_name, data_dir)
+    train_dataset = splits["train"]
+    if evaluation_split not in {"val", "test"}:
+        raise ValueError(f"不支持的医疗评估 split: {evaluation_split}")
+    val_dataset = splits[evaluation_split]
 
     return (
         _attach_dataset_metadata(train_dataset, spec["num_classes"]),
@@ -184,12 +171,13 @@ def define_model(dataset, norm_type, net_type, nch, depth, width, nclass, logger
 
 
 def load_resized_data(
-    dataset, data_dir, size=None, nclass=None, load_memory=False, seed=0
+    dataset, data_dir, size=None, nclass=None, load_memory=False, seed=0,
+    evaluation_split="val",
 ):
     # NCFM 配置使用小写名称，命令行和共享合同可能使用首字母大写。
     dataset = str(dataset).lower()
     if dataset in ("pathmnist", "covid", "kvasir"):
-        return _load_medical_dataset(dataset, data_dir, size)
+        return _load_medical_dataset(dataset, data_dir, size, evaluation_split)
     normalize = transforms.Normalize(mean=MEANS[dataset], std=STDS[dataset])
     with open(os.devnull, "w") as f, contextlib.redirect_stdout(f):
         if dataset == "cifar10":
@@ -453,6 +441,7 @@ def get_loader(args):
             size=args.size,
             nclass=args.nclass,
             load_memory=args.load_memory,
+            evaluation_split="test",
         )
         val_sampler = DistributedSampler(
             val_dataset, num_replicas=args.world_size, rank=args.rank

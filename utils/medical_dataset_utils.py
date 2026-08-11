@@ -7,6 +7,10 @@ import torch
 import numpy as np
 from torch.utils.data import Dataset
 from pathlib import Path
+from torchvision import datasets, transforms
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 # 三个医疗数据集的固定属性，供各算法和测试脚本共享。
@@ -56,13 +60,119 @@ def get_medmnist_root(data_path):
     新目录使用 ``data/PathMNIST``；如果传入目录已经直接包含
     ``pathmnist.npz``，则保留旧布局，避免重复下载已有缓存。
     """
-    base = Path(data_path).expanduser()
+    base = resolve_medical_data_root(data_path, 'PathMNIST')
     if (base / 'pathmnist.npz').exists():
         return str(base)
 
     root = base / 'PathMNIST'
     root.mkdir(parents=True, exist_ok=True)
     return str(root)
+
+
+def resolve_medical_data_root(data_path, dataset_name):
+    """解析共享 data/prepared 根目录，兼容从仓库根目录或算法子目录启动。
+
+    算法的原始代码普遍把 ``data_path`` 当作当前工作目录的相对路径。
+    这里统一尝试仓库根目录、当前目录和直接传入目录，避免不同算法读到
+    不同的副本。
+    """
+    dataset_name = str(dataset_name)
+    folder_name = dataset_name if dataset_name == 'PathMNIST' else dataset_name
+    requested = Path(data_path).expanduser()
+    candidates = [requested]
+    if not requested.is_absolute():
+        candidates.extend((Path.cwd() / requested, PROJECT_ROOT / requested))
+
+    for candidate in candidates:
+        candidate = candidate.resolve()
+        direct = candidate / folder_name
+        prepared = candidate / 'prepared' / folder_name
+        # 当 data/PathMNIST 和 data/prepared/PathMNIST 同时存在时，
+        # 优先使用统一 prepared 层，避免不同算法读到不同副本。
+        if (prepared / 'train').exists() or (prepared / 'pathmnist.npz').exists():
+            return prepared
+        if (direct / 'train').exists() or (direct / 'pathmnist.npz').exists():
+            return direct
+        if (candidate / 'pathmnist.npz').exists() and dataset_name == 'PathMNIST':
+            return candidate
+
+    # 让调用方收到包含实际路径的错误，而不是后面出现难以定位的 FileNotFoundError。
+    return (PROJECT_ROOT / 'data' / 'prepared' / folder_name).resolve()
+
+
+def _medical_transform(dataset_name, use_zca=False):
+    """创建所有算法共用的医疗数据变换；ZCA 时跳过普通 Normalize。"""
+    spec = get_medical_spec(dataset_name)
+    resize = transforms.Resize(
+        spec['im_size'], interpolation=transforms.InterpolationMode.BICUBIC
+    )
+    steps = [transforms.ToTensor(), resize]
+    if not use_zca:
+        steps.append(transforms.Normalize(spec['mean'], spec['std']))
+    return transforms.Compose(steps)
+
+
+def load_medical_splits(dataset_name, data_path, use_zca=False):
+    """读取共享的 train/val/test 三个 split。
+
+    返回字典而不是某个算法专用的 tuple，算法适配器可以按自己的返回合同
+    取用 train、val 和 test；这样不会在每个算法里重新切分数据。
+    """
+    spec = get_medical_spec(dataset_name)
+    root = resolve_medical_data_root(data_path, dataset_name)
+    transform = _medical_transform(dataset_name, use_zca=use_zca)
+
+    if spec['format'] == 'MedMNIST':
+        from medmnist import PathMNIST
+
+        # root 已经是 prepared/PathMNIST；MedMNIST 会在该目录查找 NPZ。
+        med_root = str(root)
+        splits = {
+            split: MedMNISTWrapper(
+                PathMNIST(split=split, root=med_root, download=True, transform=transform)
+            )
+            for split in ('train', 'val', 'test')
+        }
+        return splits
+
+    if not (root / 'train').exists() or not (root / 'test').exists():
+        raise FileNotFoundError(
+            f'{dataset_name} 缺少共享 train/test 目录: {root}'
+        )
+    val_root = root / 'val'
+    if not val_root.exists():
+        raise FileNotFoundError(
+            f'{dataset_name} 缺少共享 val 目录: {val_root}; '
+            '请先运行 scripts/prepare_medical_data.py prepare'
+        )
+
+    return {
+        split: datasets.ImageFolder(root / split, transform=transform)
+        for split in ('train', 'val', 'test')
+    }
+
+
+def get_split_counts(dataset_name, data_path):
+    """从 manifest 或目录统计每个 split，供审计和报告使用。"""
+    root = resolve_medical_data_root(data_path, dataset_name)
+    manifest = root / 'manifest.json'
+    if manifest.exists():
+        import json
+
+        payload = json.loads(manifest.read_text(encoding='utf-8'))
+        if 'counts' in payload:
+            return payload['counts']
+
+    counts = {}
+    for split in ('train', 'val', 'test'):
+        split_root = root / split
+        if split_root.exists():
+            for class_dir in split_root.iterdir():
+                if class_dir.is_dir():
+                    counts[f'{split}/{class_dir.name}'] = sum(
+                        1 for item in class_dir.iterdir() if item.is_file()
+                    )
+    return counts
 
 
 def scalarize_label(label):

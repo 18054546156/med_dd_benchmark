@@ -1,64 +1,28 @@
-# PathMNIST - DC方法 - IPC10 - 完整配置
-# 基于论文推荐参数，适配PathMNIST数据集
+# DC - PathMNIST - IPC10
+# RAW 来源：raw/DatasetCondensation/main.py。
+# CONTRACT：PathMNIST 官方 28x28 -> 32x32，3 通道，9 类。
+# method=DC 会关闭 DSA；不要把本文件当作 DSA 配置。
 
 dataset: PathMNIST
 method: DC
 model: ConvNet
-
-# 数据集信息
 num_classes: 9
 channel: 3
 im_size: [32, 32]
 
-# 蒸馏参数
-ipc: 10                    # Images Per Class
-Iteration: 10000           # 完整实验：10000次迭代
-lr_img: 1.0                # 合成图像学习率（PathMNIST较小，学习率较低）
-batch_real: 256            # 真实数据批大小
-batch_train: 256           # 训练批大小
-
-# 外循环和内循环
-outer_loop: 1              # 外循环次数
-inner_loop: 50             # 内循环次数
-
-# 评估参数
-num_exp: 5                 # 实验次数（多次实验取平均）
-num_eval: 5                # 每次实验的评估次数
-epoch_eval_train: 300      # 评估时训练轮数
-eval_pool: "average"       # 评估池化方式
-eval_it: 500               # 评估间隔
-
-# 网络参数
-net_train_real: True       # 在真实数据上训练网络
-net_decay: False           # 网络权重衰减
-net_act: "relu"            # 激活函数
-depth: 3                   # ConvNet深度
-width: 128                 # ConvNet宽度
-
-# 优化器参数
-optimizer_img: "sgd"       # 图像优化器
-momentum: 0.5              # 动量
-lr_teacher: 0.01           # 教师网络学习率
-weight_decay: 0.0005       # 权重衰减
-
-# 数据增强
-dsa: True                  # 使用可微增强
-dsa_strategy: "color_crop_cutout_flip_scale_rotate"
-dsa_param: "default"
-
-# 初始化
-init: "real"               # 使用真实图像初始化（推荐）
-
-# 设备和路径
-device: "cuda"
-data_path: "data/prepared"
-save_path: "../results/dc_dsa_dm/PathMNIST/DC/ipc10"
-
-# Wandb日志（可选）
-wandb: False
-project: "med_dd_pathmnist_dc"
-
-# 其他
-dis_metric: "ours"         # 距离度量
-seed: 0                    # 随机种子
-save_images: True          # 保存合成图像
+ipc: 10
+Iteration: 1000       # RAW：作者 main.py 默认值
+lr_img: 0.1           # RAW：不要按图像尺寸擅自放大
+lr_net: 0.01          # RAW
+batch_real: 256       # RAW
+batch_train: 256      # RAW
+init: noise            # RAW：DC 作者默认从噪声初始化
+dsa_strategy: None     # RAW：DC 不启用 DSA
+eval_mode: S
+num_exp: 5
+num_eval: 5            # RESOURCE：raw=20，正式报告需记录此预算变化
+epoch_eval_train: 300  # RAW
+data_path: data/prepared
+save_path: results/dc_dsa_dm/PathMNIST/DC/ipc10
+device: auto
+seed: 0

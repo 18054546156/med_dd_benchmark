@@ -1,87 +1,44 @@
-# PathMNIST - CAFE特征对齐 - IPC10 - 完整配置
-# CAFE: Contrastive Alignment of Features
+# CAFE - PathMNIST - IPC10
+# RAW 来源：raw/CAFE/distill.py；保留多层 feature alignment 和 bi-level loop。
+# CONTRACT：PathMNIST 为 3x32x32、9 类；只有数据入口和类别数迁移。
 
 dataset: PathMNIST
 method: CAFE
 model: ConvNet
-
-# 数据集信息
 num_classes: 9
 channel: 3
 im_size: [32, 32]
 
-# 蒸馏参数
-ipc: 10                    # Images Per Class
-Iteration: 10000           # 蒸馏迭代次数
-lr_img: 1.0                # 合成图像学习率
-batch_real: 256            # 真实数据批大小
-batch_train: 256           # 训练批大小
+ipc: 10
+Iteration: 2000       # RAW：CAFE distill.py 默认值
+lr_img: 0.1           # RAW
+lr_net: 0.01          # RAW
+batch_real: 256       # RAW
+batch_train: 256      # RAW
+init: noise            # RAW
+dsa_strategy: None     # RAW：CAFE 默认关闭 DSA
 
-# CAFE特定参数
-cafe:
-  # 特征对齐参数
-  alpha: 0.5               # 特征对齐损失权重
-  beta: 0.5                # 梯度匹配损失权重
+# CAFE 原始 CLI 中的损失权重；这些字段会被 run_config.py 显式传递。
+first_weight: 1.0
+second_weight: 1.0
+third_weight: 0.1
+fourth_weight: 0.1
+inner_weight: 0.01
+lambda_1: 0.04
+lambda_2: 0.03
 
-  # 特征提取
-  feature_layers: [2, 3]   # 使用哪些层的特征
-  feature_type: "embedding" # 特征类型：embedding/activation/both
-
-  # 对比学习参数
-  temperature: 0.5         # 对比学习温度
-  contrast_mode: "all"     # 对比模式：all/positive/negative
-
-  # 特征对齐方式
-  align_type: "mse"        # 对齐类型：mse/cosine/kl
-  normalize_features: True # 归一化特征
-
-# 网络参数
-network:
-  depth: 3                 # ConvNet深度
-  width: 128               # ConvNet宽度
-  norm_type: instance      # 归一化类型
-  activation: relu         # 激活函数
-
-# 优化器参数
-optimizer:
-  optimizer_img: "sgd"     # 图像优化器
-  momentum: 0.5            # 动量
-  lr_teacher: 0.01         # 教师网络学习率
-  weight_decay: 0.0005     # 权重衰减
-
-# 数据增强
-augmentation:
-  dsa: True                # 使用可微增强
-  dsa_strategy: "color_crop_cutout_flip_scale_rotate"
-
-# 评估参数
 evaluation:
-  num_exp: 5               # 实验次数
-  num_eval: 5              # 每次实验的评估次数
-  epoch_eval_train: 300    # 评估时训练轮数
-  eval_pool: "average"     # 评估池化方式
-  eval_it: 500             # 评估间隔
+  eval_mode: S
+  num_exp: 1            # RESOURCE：正式报告应增加独立 seed
+  num_eval: 5           # RESOURCE
+  epoch_eval_train: 300 # RAW/评估预算记录
 
-# 初始化
-init: "real"               # 使用真实图像初始化
+# 说明性记录：当前 raw CLI 没有这些参数，不能声称会改变运行流程。
+cafe:
+  feature_layers: [2, 3]
+  note: "CAFE 的实际层级由 raw 网络和 loss 实现决定"
 
-# 设备和路径
-device: "cuda"
-data_path: "data/prepared"
-save_path: "../results/cafe/PathMNIST/ipc10"
-
-# Wandb日志（可选）
-wandb: False
-project: "med_dd_pathmnist_cafe"
-
-# 其他
+device: cuda
+data_path: data/prepared
+save_path: results/cafe/PathMNIST/ipc10
 seed: 0
-save_images: True
-save_features: True        # 保存特征用于分析
-
-# CAFE说明：
-# 1. 核心思想：特征对齐 + 梯度匹配
-# 2. alpha和beta控制两种损失的权重
-# 3. 特征对齐使合成数据和真实数据在特征空间接近
-# 4. 梯度匹配保证训练动态一致
-# 5. 对小数据集特别有效

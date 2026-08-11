@@ -1,88 +1,59 @@
-# COVID - MTT轨迹匹配 - IPC10 - 完整配置
-# 需要先运行buffer.py生成专家轨迹
+# MTT - COVID - IPC10
+# 参数来源：raw/mtt-distillation/distill.py 与 raw/mtt-distillation/buffer.py。
+# CONTRACT：COVID 为 3x112x112、4 类；112 来自 HoP-TM 的作者配置。
+# batch=128 是 RESOURCE（大于 raw 的 256 会降低显存占用），核心轨迹匹配参数按 RAW。
 
 dataset: COVID
 model: ConvNet
-
-# 数据集信息
 num_classes: 4
 channel: 3
 im_size: [112, 112]
 
-# Buffer生成配置（第一步）
 buffer:
   model: ConvNet
-  train_epochs: 150        # 训练epoch数（小数据集减少epoch）
-  num_experts: 50          # 专家数量（小数据集减少专家数）
-  buffer_path: ./buffers   # buffer保存路径
-  batch_train: 128         # 训练批大小
-  lr_teacher: 0.01         # 教师学习率
-  save_interval: 10        # 保存间隔
+  train_epochs: 50        # RAW：buffer.py 默认值
+  num_experts: 100        # RAW：buffer.py 默认值；不能因数据量小擅自减少
+  buffer_path: buffers/mtt
+  batch_train: 128        # RESOURCE：112x112 显存适配，raw=256
+  batch_real: 128         # RESOURCE：与 train batch 保持一致
+  lr_teacher: 0.01        # RAW
+  save_interval: 10       # RAW
 
-# 蒸馏配置（第二步）
 distillation:
-  ipc: 10                  # Images Per Class
-  Iteration: 5000          # 蒸馏迭代次数（小数据集减少）
+  ipc: 10
+  Iteration: 5000         # RAW
+  lr_img: 1000            # RAW：MTT 作者默认值
+  lr_lr: 1e-5             # RAW
+  lr_teacher: 0.01        # RAW
+  batch_real: 128         # RESOURCE：raw=256
+  batch_train: 128        # RESOURCE：raw=256
+  batch_syn: null
+  expert_epochs: 3        # RAW
+  syn_steps: 20            # RAW
+  max_start_epoch: 25     # RAW
+  pix_init: real          # RAW
+  dsa_strategy: color_crop_cutout_flip_scale_rotate # RAW
 
-  # 轨迹匹配参数
-  syn_steps: 40            # 合成步数
-  expert_epochs: 3         # 每次采样的专家epoch数
-
-  # 学习率
-  lr_img: 10.0             # 合成图像学习率（中等尺寸）
-  lr_lr: 1e-5              # 学习率的学习率
-
-  # 批大小
-  batch_real: 128          # 真实数据批大小
-  batch_train: 128         # 训练批大小
-  batch_syn: None          # 合成批大小
-
-  # 采样策略
-  max_start_epoch: 30      # 最大起始epoch
-
-# 网络配置
-network:
-  depth: 4                 # ConvNet深度（中等尺寸）
-  width: 128               # ConvNet宽度
-  norm_type: instance      # 归一化类型
-  activation: relu         # 激活函数
-
-# 优化器配置
-optimizer:
-  optimizer_img: sgd       # 图像优化器
-  momentum: 0.5            # 动量
-  weight_decay: 0.001      # 权重衰减（小数据集增大）
-
-# 数据增强（重要！）
 augmentation:
-  dsa: True                # 使用可微增强
-  dsa_strategy: "color_crop_cutout_flip_scale_rotate"
+  dsa: true
 
-# 评估配置
 evaluation:
-  num_eval: 5              # 评估次数
-  epoch_eval_train: 300    # 评估时训练轮数
-  eval_it: 250             # 评估间隔
-  eval_mode: "S"           # 评估模式
+  num_eval: 5             # RESOURCE：降低评估模型数量，不能当作作者结果
+  eval_it: 100
+  epoch_eval_train: 1000
+  eval_mode: S
 
-# 初始化
-init: "real"               # 使用真实图像初始化
-
-# 设备和路径
+init: real
 device: cuda
 data_path: data/prepared
-buffer_path: ./buffers/COVID
-save_path: ../results/mtt/COVID/ipc10
-
-# Wandb（可选）
-wandb: False
-project: med_dd_covid_mtt
-
-# 其他
+buffer_path: buffers/mtt
+save_path: results/mtt/COVID/ipc10
+zca: false
 seed: 0
-save_images: True
 
-# COVID特定注意：
-# 1. 数据集较小，减少num_experts和train_epochs
-# 2. 类别不均衡，可能需要类别加权
-# 3. 需要强数据增强
+network:
+  depth: 4                # MIGRATION：112x112 的结构记录；入口以 model 为准
+  width: 128
+optimizer:
+  momentum: 0.5
+  weight_decay: 0.0005

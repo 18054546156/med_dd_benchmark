@@ -1,41 +1,43 @@
-# HoP-TM COVID configuration.
-# Buffer generation uses adapted/hop_tm/buffer/buffer_FTD.py.
+# HoP-TM - COVID - IPC10
+# RAW 来源：raw/HoP-TM/exp_configs/COVID/ConvIN/IPC10_high_order.yaml。
+# CONTRACT：COVID 为 3x112x112、4 类；112 和 ConvNetD5 来自作者 COVID 配置。
+# buffer 与 distill 必须使用完全相同的 model、归一化、尺寸和数据合同。
+
 dataset: COVID
+num_classes: 4
+channel: 3
+im_size: [112, 112]
 device: [0]
-model: ConvNet
+model: ConvNetD5       # RAW：作者 COVID 配置
 ipc: 10
-syn_steps: 80
-expert_epochs: 2
-lr_img: 10
-lr_teacher: 0.01
-buffer_path: ../../buffers
+syn_steps: 80          # RAW
+expert_epochs: 2       # RAW
+lr_img: 100            # RAW
+lr_teacher: 0.001      # RAW
+buffer_path: buffers/hop_tm
 data_path: data/prepared
-ema_decay: 0.995
-Iteration: 10000
-batch_syn: 10
-batch_train: 64
+ema_decay: 0.995       # RAW
+Iteration: 10000       # RAW
+batch_syn: 10          # RAW
+batch_train: 128       # RAW
+batch_real: 256        # RAW：buffer_FTD.py 默认值
+num_experts: 100       # RAW：buffer_FTD.py 默认值
+train_epochs: 100      # RAW：buffer_FTD.py 默认值
 project: covid_high_order
-wandb: false
-num_eval: 5
-eval_it: 500
-skip_first_eva: true
-pix_init: real
-high_order: true
-base_threshold: 5e-9
-growing_factor: 1.5
-lamb: 0.5
-min_start_epoch: 0
-max_start_epoch: 4
-lr_lr: 1e-7
+num_eval: 1             # RAW
+eval_it: 500            # RAW
+skip_first_eva: true    # RAW
+pix_init: real          # RAW
+high_order: true        # RAW
+base_threshold: 1e-10   # RAW
+growing_factor: 1.3     # RAW
+lamb: 1.0               # RAW
+min_start_epoch: 0      # RAW
+max_start_epoch: 20     # RAW
+lr_lr: 1e-7             # RAW
 zca: false
 dsa: true
 dsa_strategy: color_crop_cutout_flip_scale_rotate
-depth: 4
-width: 128
-norm_type: instance
-optimizer: sgd
-momentum: 0.5
-weight_decay: 0.0005
 save_path: results/hop_tm/COVID/ipc10
 save_images: true
-save_interval: 1000
+save_interval: 10

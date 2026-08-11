@@ -1,4 +1,6 @@
-# NCFM PathMNIST configuration. Run condense_script.py with this file.
+# NCFM - PathMNIST - IPC10 full
+# RAW 参考：raw/NCFM/config/CIFAR10；CONTRACT：3x32x32、9 类。
+# depth=3/size=32 是 CIFAR10 结构迁移；batch 是 RESOURCE，不是医疗官方值。
 distibution_train:
   backend: nccl
   init_method: env://
@@ -9,19 +11,19 @@ dataset:
   size: 32
   data_dir: data/prepared
   load_memory: false
-  batch_real: 128
+  batch_real: 128       # RESOURCE：raw CIFAR10=1024，按本机显存降低
   nch: 3
 network:
   net_type: convnet
   norm_type: instance
-  depth: 3
+  depth: 3              # MIGRATION：参考 raw CIFAR10
   width: 1.0
 train:
   evaluation_epochs: 2000
   epoch_print_freq: 10
   epoch_eval_interval: 100
-  pertrain_epochs: 60
-  batch_size: 128
+  pertrain_epochs: 60   # RAW 参考：CIFAR10 配置
+  batch_size: 128       # RESOURCE：raw CIFAR10=128
   lr: 0.01
   adamw_lr: 0.001
   eval_optimizer: adamw

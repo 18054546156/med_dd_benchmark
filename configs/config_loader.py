@@ -173,8 +173,11 @@ def get_config_path(algorithm: str, dataset: str, ipc: int = 10,
 
     # 所有当前适配算法都按 dataset 子目录组织配置；NCFM 也使用同一层级，
     # 不能按旧版的 configs/ncfm/<dataset>.yaml 推导路径。
-    if algorithm == 'dc_dsa_dm':
-        # DC/DSA/DM 共用官方入口配置，文件名保留 dc 后缀以对应原仓库命名。
+    if algorithm in {'dc', 'dsa', 'dm'}:
+        # 三个方法共用 adapted 目录，但必须保留各自独立的参数文件。
+        filename = f"ipc{ipc}_{algorithm}_{config_type}.yaml"
+        algorithm = 'dc_dsa_dm'
+    elif algorithm == 'dc_dsa_dm':
         filename = f"ipc{ipc}_dc_{config_type}.yaml"
     else:
         filename = f"ipc{ipc}_{config_type}.yaml"

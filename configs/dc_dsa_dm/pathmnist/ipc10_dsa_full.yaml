@@ -1,0 +1,26 @@
+# DSA - PathMNIST - IPC10
+# RAW 来源：raw/DatasetCondensation/main.py；method=DSA 开启可微 Siamese augmentation。
+# CONTRACT：PathMNIST 统一为 3x32x32、9 类；损失和增强机制保持 raw。
+
+dataset: PathMNIST
+method: DSA
+model: ConvNet
+num_classes: 9
+channel: 3
+im_size: [32, 32]
+ipc: 10
+Iteration: 1000       # RAW
+lr_img: 0.1           # RAW
+lr_net: 0.01          # RAW
+batch_real: 256       # RAW
+batch_train: 256      # RAW
+init: noise            # RAW
+dsa_strategy: color_crop_cutout_flip_scale_rotate # RAW
+eval_mode: S
+num_exp: 5
+num_eval: 5            # RESOURCE：raw=20
+epoch_eval_train: 300
+data_path: data/prepared
+save_path: results/dc_dsa_dm/PathMNIST/DSA/ipc10
+device: auto
+seed: 0

@@ -1,4 +1,5 @@
-# NCFM COVID official-entry smoke configuration.
+# NCFM - COVID - IPC1 smoke
+# SMOKE：1 epoch/1 iteration 只验证入口，不代表 NCFM 的医疗结果。
 distibution_train:
   backend: nccl
   init_method: env://
@@ -7,7 +8,7 @@ dataset:
   dataset: covid
   nclass: 4
   size: 112
-  data_dir: ../../data/prepared
+  data_dir: data/prepared
   load_memory: false
   batch_real: 8
   nch: 3
@@ -44,8 +45,8 @@ optimization:
   mom_img: 0.5
   lr_sampling_net: 0.001
 save_path:
-  save_dir: ../../results/official_smoke/ncfm/covid
-  pretrain_dir: ../../results/official_smoke/ncfm_pretrained
+  save_dir: results/official_smoke/ncfm/covid
+  pretrain_dir: results/official_smoke/ncfm_pretrained
 condense:
   ipc: 1
   num_premodel: 1

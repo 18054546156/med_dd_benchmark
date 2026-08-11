@@ -1,4 +1,6 @@
-# NCFM COVID configuration. Run condense_script.py with this file.
+# NCFM - COVID - IPC10 full
+# RAW 参考：raw/NCFM/config/TinyImageNet；CONTRACT：3x112x112、4 类。
+# depth=4 是从 TinyImageNet 参考迁移；batch/worker 是 RESOURCE 参数。
 distibution_train:
   backend: nccl
   init_method: env://
@@ -9,19 +11,19 @@ dataset:
   size: 112
   data_dir: data/prepared
   load_memory: false
-  batch_real: 128
+  batch_real: 128       # RESOURCE：raw CIFAR10=1024，按本机显存降低
   nch: 3
 network:
   net_type: convnet
   norm_type: instance
-  depth: 4
+  depth: 4              # MIGRATION：参考 raw TinyImageNet
   width: 1.0
 train:
   evaluation_epochs: 2000
   epoch_print_freq: 10
   epoch_eval_interval: 100
-  pertrain_epochs: 60
-  batch_size: 64
+  pertrain_epochs: 60   # MIGRATION：先沿用 CIFAR10 预算，需验证集确认
+  batch_size: 64         # RESOURCE：112x112 显存适配
   lr: 0.01
   adamw_lr: 0.001
   eval_optimizer: adamw

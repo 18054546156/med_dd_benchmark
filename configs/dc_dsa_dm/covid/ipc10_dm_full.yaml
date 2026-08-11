@@ -1,0 +1,27 @@
+# DM - COVID - IPC10
+# RAW 来源：raw/DatasetCondensation/main_DM.py。
+# CONTRACT：COVID 为 3x112x112、4 类；batch=128 是 RESOURCE。
+# DM 的默认可微增强必须保留，不能写成 None。
+
+dataset: COVID
+method: DM
+model: ConvNet
+num_classes: 4
+channel: 3
+im_size: [112, 112]
+ipc: 10
+Iteration: 20000      # RAW
+lr_img: 1.0           # RAW
+lr_net: 0.01          # RAW
+batch_real: 128       # RESOURCE：raw=256
+batch_train: 128      # RESOURCE：raw=256
+init: real             # RAW
+dsa_strategy: color_crop_cutout_flip_scale_rotate # RAW
+eval_mode: S
+num_exp: 5
+num_eval: 5            # RESOURCE：raw=20
+epoch_eval_train: 300
+data_path: data/prepared
+save_path: results/dc_dsa_dm/COVID/DM/ipc10
+device: auto
+seed: 0

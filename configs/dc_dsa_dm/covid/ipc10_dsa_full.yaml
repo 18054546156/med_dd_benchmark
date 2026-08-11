@@ -1,27 +1,26 @@
-# DC - COVID - IPC10
-# RAW 来源：raw/DatasetCondensation/main.py。
-# CONTRACT：COVID 使用作者 HoP-TM 配置的 112x112、3 通道、4 类。
-# RESOURCE：batch=128、num_eval=5；Iteration/lr_img 保持 DC raw。
+# DSA - COVID - IPC10
+# RAW 来源：raw/DatasetCondensation/main.py；method=DSA 开启可微 Siamese augmentation。
+# CONTRACT：COVID 为 3x112x112、4 类；batch=128 是 RESOURCE。
 
 dataset: COVID
-method: DC
+method: DSA
 model: ConvNet
 num_classes: 4
 channel: 3
 im_size: [112, 112]
 ipc: 10
 Iteration: 1000       # RAW
-lr_img: 0.1           # RAW：不因 112x112 擅自放大
+lr_img: 0.1           # RAW
 lr_net: 0.01          # RAW
 batch_real: 128       # RESOURCE：raw=256
 batch_train: 128      # RESOURCE：raw=256
 init: noise            # RAW
-dsa_strategy: None
+dsa_strategy: color_crop_cutout_flip_scale_rotate # RAW
 eval_mode: S
 num_exp: 5
 num_eval: 5            # RESOURCE：raw=20
 epoch_eval_train: 300
 data_path: data/prepared
-save_path: results/dc_dsa_dm/COVID/DC/ipc10
+save_path: results/dc_dsa_dm/COVID/DSA/ipc10
 device: auto
 seed: 0

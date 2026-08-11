@@ -1,5 +1,8 @@
 # HoP-TM PathMNIST official-entry smoke configuration.
 dataset: PathMNIST
+num_classes: 9
+channel: 3
+im_size: [32, 32]
 device: [0]
 model: ConvNet
 ipc: 1
@@ -7,8 +10,8 @@ syn_steps: 1
 expert_epochs: 1
 lr_img: 1
 lr_teacher: 0.01
-buffer_path: ../../buffers/official_smoke/hop_full
-data_path: ../../data/prepared
+buffer_path: buffers/official_smoke/hop_full
+data_path: data/prepared
 Iteration: 0
 batch_syn: 2
 batch_train: 2

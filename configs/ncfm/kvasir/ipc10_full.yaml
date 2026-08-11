@@ -1,4 +1,6 @@
-# NCFM Kvasir configuration. Run condense_script.py with this file.
+# NCFM - Kvasir - IPC10 full
+# RAW 参考：raw/NCFM/config/ImageNette；MIGRATION：3x128x128、8 类。
+# Kvasir 没有 NCFM 作者官方配置；depth=5/128 是 ImageNette 参考迁移。
 distibution_train:
   backend: nccl
   init_method: env://
@@ -9,19 +11,19 @@ dataset:
   size: 128
   data_dir: data/prepared
   load_memory: false
-  batch_real: 128
+  batch_real: 128       # RESOURCE：按本机显存降低
   nch: 3
 network:
   net_type: convnet
   norm_type: instance
-  depth: 5
+  depth: 5              # MIGRATION：参考 raw ImageNette
   width: 1.0
 train:
   evaluation_epochs: 2000
   epoch_print_freq: 10
   epoch_eval_interval: 100
-  pertrain_epochs: 60
-  batch_size: 64
+  pertrain_epochs: 60   # MIGRATION：沿用当前 benchmark 预算，需验证集确认
+  batch_size: 64         # RESOURCE：128x128 显存适配
   lr: 0.01
   adamw_lr: 0.001
   eval_optimizer: adamw
