@@ -1,0 +1,9 @@
+# 三个数据集的 benchmark backbone 合同：COVID 使用 D5。
+dataset: COVID
+model: ConvNetD5
+channel: 3
+num_classes: 4
+im_size: [112, 112]
+depth: 5
+width: 128
+norm: instance

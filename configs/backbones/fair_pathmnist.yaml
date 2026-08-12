@@ -1,0 +1,9 @@
+# 三个数据集的 benchmark backbone 合同：PathMNIST 使用 D3。
+dataset: PathMNIST
+model: ConvNet
+channel: 3
+num_classes: 9
+im_size: [32, 32]
+depth: 3
+width: 128
+norm: instance

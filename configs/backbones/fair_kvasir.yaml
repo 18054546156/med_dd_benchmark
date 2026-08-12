@@ -1,0 +1,9 @@
+# 三个数据集的 benchmark backbone 合同：Kvasir 使用 D5。
+dataset: Kvasir
+model: ConvNetD5
+channel: 3
+num_classes: 8
+im_size: [128, 128]
+depth: 5
+width: 128
+norm: instance

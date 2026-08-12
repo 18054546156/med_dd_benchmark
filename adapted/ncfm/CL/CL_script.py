@@ -3,7 +3,15 @@ def main_work(args):
     _,val_loader = get_loader(args)
 
 
-    synset = Condenser(args, nclass_list=list(range(0,args.nclass)), nchannel=args.nch, hs=args.size, ws=args.size, device='cuda')
+    # 继续学习入口也必须复用 init_script 选择的设备，不能固定写死 CUDA。
+    synset = Condenser(
+        args,
+        nclass_list=list(range(0, args.nclass)),
+        nchannel=args.nch,
+        hs=args.size,
+        ws=args.size,
+        device=args.device,
+    )
 
     for rank in range (args.world_size):
         if rank==args.rank:

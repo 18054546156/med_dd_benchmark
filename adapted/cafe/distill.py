@@ -113,6 +113,10 @@ def main():
 
     eval_it_pool = np.arange(0, args.Iteration + 1, 100).tolist() if args.eval_mode == 'S' else [
         args.Iteration]  # The list of iterations when we evaluate models and record results.
+    # 医疗 smoke 配置可能只有 1 次迭代，必须保证最终迭代也进入评估集合。
+    if args.Iteration not in eval_it_pool:
+        eval_it_pool.append(args.Iteration)
+    eval_it_pool = sorted(set(eval_it_pool))
     channel, im_size, num_classes, class_names, mean, std, dst_train, dst_test, testloader = get_dataset(args.dataset,
                                                                                                          args.data_path)
     model_eval_pool = get_eval_pool(args.eval_mode, args.model, args.model)
@@ -383,6 +387,8 @@ def main():
     logger.info('\n==================== Final Results ====================\n')
     for key in model_eval_pool:
         accs = accs_all_exps[key]
+        if not accs:
+            raise RuntimeError(f'最终迭代没有产生评估结果: {key}')
         logger.info('Run %d experiments, train on %s, evaluate %d random %s, mean  = %.2f%%  std = %.2f%%' % (
             args.num_exp, args.model, len(accs), key, np.mean(accs) * 100, np.std(accs) * 100))
 

@@ -105,6 +105,39 @@ def get_dataset(dataset, data_path, batch_size=1, subset="imagenette", args=None
     loader_train_dict = None
     class_map_inv = None
 
+    # 三个医疗数据集统一从 prepared/train、prepared/val、prepared/test 读取。
+    # MTT 仍使用按类别的 loader，只替换数据入口，不改变 expert trajectory 逻辑。
+    medical_name = {
+        "PathMnist": "PathMNIST",
+        "PathMNIST": "PathMNIST",
+        "COVID": "COVID",
+        "Kvasir": "Kvasir",
+    }.get(dataset)
+    if medical_name is not None and not args.zca:
+        spec = MEDICAL_DATASET_SPECS[medical_name]
+        splits = load_medical_splits(medical_name, data_path, use_zca=False)
+        dst_train = splits["train"]
+        dst_test = splits["test"]
+        channel = spec["channel"]
+        im_size = spec["im_size"]
+        num_classes = spec["num_classes"]
+        mean = spec["mean"]
+        std = spec["std"]
+        class_names = getattr(dst_train, "classes", [str(c) for c in range(num_classes)])
+        class_map = {c: c for c in range(num_classes)}
+        class_map_inv = {c: c for c in range(num_classes)}
+        loader_train_dict = _build_class_loaders(
+            dst_train, num_classes, batch_size, loader_workers
+        )
+        testloader = torch.utils.data.DataLoader(
+            dst_test, batch_size=128, shuffle=False, num_workers=loader_workers
+        )
+        return (
+            channel, im_size, num_classes, class_names, mean, std,
+            dst_train, dst_test, testloader, loader_train_dict,
+            class_map, class_map_inv,
+        )
+
     if dataset == 'CIFAR10':
         channel = 3
         im_size = (32, 32)

@@ -123,6 +123,14 @@ def load_medical_splits(dataset_name, data_path, use_zca=False):
     transform = _medical_transform(dataset_name, use_zca=use_zca)
 
     if spec['format'] == 'MedMNIST':
+        # PathMNIST 已按官方 train/val/test 划分落盘时，优先读取统一的
+        # ImageFolder 目录；只有旧环境没有文件夹时，才回退到 MedMNIST NPZ。
+        folder_splits = [root / split for split in ('train', 'val', 'test')]
+        if all(split_root.is_dir() for split_root in folder_splits):
+            return {
+                split: datasets.ImageFolder(root / split, transform=transform)
+                for split in ('train', 'val', 'test')
+            }
         from medmnist import PathMNIST
 
         # root 已经是 prepared/PathMNIST；MedMNIST 会在该目录查找 NPZ。

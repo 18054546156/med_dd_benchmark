@@ -4,7 +4,7 @@
 
 dataset: COVID
 method: DataDAM
-model: ConvNet
+model: ConvNetD5
 num_classes: 4
 channel: 3
 im_size: [112, 112]

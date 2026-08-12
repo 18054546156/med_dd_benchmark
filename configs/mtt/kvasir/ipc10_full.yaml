@@ -4,13 +4,13 @@
 # batch=64 是 RESOURCE；lr_img、Iteration、syn_steps 等核心参数保持 RAW。
 
 dataset: Kvasir
-model: ConvNet
+model: ConvNetD5       # 医疗迁移配置：128x128 使用 D5；必须重新生成对应 buffer
 num_classes: 8
 channel: 3
 im_size: [128, 128]
 
 buffer:
-  model: ConvNet
+  model: ConvNetD5      # 必须与顶层 model 完全一致
   train_epochs: 50        # RAW
   num_experts: 100        # RAW
   buffer_path: buffers/mtt

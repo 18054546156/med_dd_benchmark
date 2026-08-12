@@ -4,7 +4,7 @@
 
 dataset: Kvasir
 method: DSA
-model: ConvNet
+model: ConvNetD5
 num_classes: 8
 channel: 3
 im_size: [128, 128]

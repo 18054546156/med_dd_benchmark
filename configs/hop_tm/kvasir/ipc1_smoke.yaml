@@ -4,7 +4,7 @@ num_classes: 8
 channel: 3
 im_size: [128, 128]
 device: [0]
-model: ConvNet
+model: ConvNetD5
 ipc: 1
 syn_steps: 1
 expert_epochs: 1

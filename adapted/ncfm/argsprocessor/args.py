@@ -35,7 +35,16 @@ class ArgsProcessor:
                 items.extend(self.flatten_dict(v, new_key, sep=sep).items())
             else:
                 items.append((new_key, v))
-        return dict(items)
+        flattened: Dict[str, Any] = {}
+        for key, value in items:
+            if key in flattened:
+                # NCFM 将嵌套 YAML 展平成 argparse 属性；同名键若静默覆盖，
+                # 最终运行值会依赖 YAML 顺序，无法审计，因此直接失败。
+                raise ValueError(
+                    f"配置存在同名键冲突: '{key}'，请合并字段或改名后再运行。"
+                )
+            flattened[key] = value
+        return flattened
 
     def add_args_from_yaml(self, args: argparse.Namespace) -> argparse.Namespace:
         """

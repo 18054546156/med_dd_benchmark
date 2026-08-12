@@ -3,17 +3,22 @@ import numpy as np
 import torch.nn.functional as F
 
 
-def random_indices(y, nclass=10, intraclass=False, device="cuda"):
+def random_indices(y, nclass=10, intraclass=False, device=None):
+    """生成混合增强索引；默认跟随标签所在设备，避免 CPU smoke 误用 CUDA。"""
+    if device is None:
+        device = y.device
+    else:
+        device = torch.device(device)
     n = len(y)
     if intraclass:
-        index = torch.arange(n).to(device)
+        index = torch.arange(n, device=device)
         for c in range(nclass):
             index_c = index[y == c]
             if len(index_c) > 0:
-                randidx = torch.randperm(len(index_c))
+                randidx = torch.randperm(len(index_c), device=device)
                 index[y == c] = index_c[randidx]
     else:
-        index = torch.randperm(n).to(device)
+        index = torch.randperm(n, device=device)
     return index
 
 

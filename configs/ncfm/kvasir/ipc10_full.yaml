@@ -47,7 +47,7 @@ optimization:
   lr_sampling_net: 0.001
 save_path:
   save_dir: results/ncfm/kvasir
-  pretrain_dir: pretrained_models/kvasir
+  pretrain_dir: pretrained_models/ncfm
 condense:
   ipc: 10
   num_premodel: 20

@@ -4,13 +4,13 @@
 # batch=128 是 RESOURCE（大于 raw 的 256 会降低显存占用），核心轨迹匹配参数按 RAW。
 
 dataset: COVID
-model: ConvNet
+model: ConvNetD5       # 医疗迁移配置：112x112 使用 D5；必须重新生成对应 buffer
 num_classes: 4
 channel: 3
 im_size: [112, 112]
 
 buffer:
-  model: ConvNet
+  model: ConvNetD5      # 必须与顶层 model 完全一致
   train_epochs: 50        # RAW：buffer.py 默认值
   num_experts: 100        # RAW：buffer.py 默认值；不能因数据量小擅自减少
   buffer_path: buffers/mtt
@@ -52,7 +52,7 @@ zca: false
 seed: 0
 
 network:
-  depth: 4                # MIGRATION：112x112 的结构记录；入口以 model 为准
+  depth: 5                # MIGRATION：D5 结构记录；入口以 model 为准
   width: 128
 optimizer:
   momentum: 0.5

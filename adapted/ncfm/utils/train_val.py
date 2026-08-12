@@ -18,8 +18,8 @@ def train_epoch(
     model.train()
     end = time.time()
     for i, (input, target) in enumerate(train_loader):
-        input = input.cuda(non_blocking=True)
-        target = target.cuda(non_blocking=True)
+        input = input.to(args.device, non_blocking=True)
+        target = target.to(args.device, non_blocking=True)
 
         data_time.update(time.time() - end)
 
@@ -109,8 +109,8 @@ def train_epoch_softlabel(
     teacher_model.eval()
     model.train()
     for i, (input, target) in enumerate(train_loader):
-        input = input.cuda(non_blocking=True)
-        target = target.cuda(non_blocking=True)
+        input = input.to(args.device, non_blocking=True)
+        target = target.to(args.device, non_blocking=True)
         with torch.no_grad():
             # soft_label = get_softlabel(input,teacher_model,target).detach()
             soft_label = teacher_model(input).detach()
@@ -177,8 +177,8 @@ def train_epoch_softlabel(
     teacher_model.eval()
     model.train()
     for i, (input, target) in enumerate(train_loader):
-        input = input.cuda(non_blocking=True)
-        target = target.cuda(non_blocking=True)
+        input = input.to(args.device, non_blocking=True)
+        target = target.to(args.device, non_blocking=True)
         with torch.no_grad():
             soft_label = get_softlabel(input, teacher_model, target).detach()
         data_time.update(time.time() - end)
@@ -228,8 +228,9 @@ def validate(val_loader, model, criterion):
     model.eval()
     end = time.time()
     for i, (input, target) in enumerate(val_loader):
-        input = input.cuda()
-        target = target.cuda()
+        device = next(model.parameters()).device
+        input = input.to(device)
+        target = target.to(device)
         output = model(input)
         loss = criterion(output, target)
         acc1, acc5 = accuracy(output.data, target, topk=(1, 5))

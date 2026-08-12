@@ -244,10 +244,12 @@ def run_one(algorithm, dataset, data_path):
     images = torch.stack([train[index][0] for index in indices]).float().to(device)
     labels = torch.arange(num_classes, dtype=torch.long, device=device)
 
+    model_name = "ConvNet" if dataset == "PathMNIST" else "ConvNetD5"
+    model_depth = 3 if dataset == "PathMNIST" else 5
     if algorithm == "NCFM":
-        model = module("medical", "instance", "convnet", channel, 3, 1.0, num_classes, None, im_size[0])
+        model = module("medical", "instance", "convnet", channel, model_depth, 1.0, num_classes, None, im_size[0])
     else:
-        model = module.get_network("ConvNet", channel, num_classes, im_size)
+        model = module.get_network(model_name, channel, num_classes, im_size)
     model = model.to(device).train()
 
     # DataDAM/CAFE 的网络返回 tuple，其余官方 ConvNet 返回 logits tensor。

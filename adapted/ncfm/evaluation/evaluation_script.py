@@ -8,7 +8,7 @@ def main_work(args):
         nchannel=args.nch,
         hs=args.size,
         ws=args.size,
-        device="cuda",
+        device=args.device,
     )
 
     for rank in range(args.world_size):

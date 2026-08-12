@@ -23,7 +23,7 @@ from tqdm import tqdm
 import random
 
 class Condenser:
-    def __init__(self, args, nclass_list, nchannel, hs, ws, device="cuda"):
+    def __init__(self, args, nclass_list, nchannel, hs, ws, device=None):
         self.timing_tracker = TimingTracker(args.logger)
         self.args = args
         self.logger = args.logger
@@ -31,7 +31,10 @@ class Condenser:
         self.nclass_list = nclass_list
         self.nchannel = nchannel
         self.size = (hs, ws)
-        self.device = device
+        # 显式传入 args.device；保留 CPU fallback，避免备用调用点隐式访问 CUDA。
+        self.device = torch.device(
+            device if device is not None else ("cuda" if torch.cuda.is_available() else "cpu")
+        )
         self.nclass = len(nclass_list)
         self.data = torch.randn(
             size=(self.nclass * self.ipc, self.nchannel, hs, ws),

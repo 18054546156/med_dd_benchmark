@@ -189,8 +189,14 @@ class ClassPartMemDataLoader(MultiEpochsDataLoader):
     while can loading full training data from storage.
     """
 
-    def __init__(self, subclass_list, real_to_idx, *args, **kwargs):
+    def __init__(self, subclass_list, real_to_idx, *args, device=None, **kwargs):
         super().__init__(*args, **kwargs)
+
+        # 该 loader 主要服务 ImageNet 子集；保留原始 GPU 行为，同时允许
+        # CPU/Gloo smoke 显式传入 device，避免在构造阶段硬编码 CUDA。
+        self.device = torch.device(
+            device if device is not None else ("cuda" if torch.cuda.is_available() else "cpu")
+        )
 
         self.nclass = self.dataset.nclass
         self.mem_cls = subclass_list
@@ -203,7 +209,7 @@ class ClassPartMemDataLoader(MultiEpochsDataLoader):
         for i in range(len(self.dataset)):
             c = self.dataset.targets[i]
             if c in self.mem_cls:
-                self.data_mem.append(self.dataset[i][0].cuda())
+                self.data_mem.append(self.dataset[i][0].to(self.device))
                 self.cls_idx[c].append(idx)
                 idx += 1
 
@@ -219,7 +225,7 @@ class ClassPartMemDataLoader(MultiEpochsDataLoader):
             [np.ones(class_batch_size) * c for c in range(self.nclass)],
             dtype=torch.long,
             requires_grad=False,
-            device="cuda",
+            device=self.device,
         )
 
     def class_sample(self, c, ipc=-1):
@@ -241,7 +247,7 @@ class ClassPartMemDataLoader(MultiEpochsDataLoader):
         if self.convert != None:
             data = self.convert(data)
 
-        return data.cuda(), target.cuda()
+        return data.to(self.device), target.to(self.device)
 
 
 class AsyncLoader:

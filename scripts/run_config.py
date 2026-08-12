@@ -9,8 +9,13 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
+import os
+import shutil
 import subprocess
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -34,6 +39,15 @@ def load_config(path: Path) -> dict[str, Any]:
     return config
 
 
+def dataset_from_config(config: dict[str, Any]) -> str:
+    """把扁平/嵌套 YAML 中的数据集名称统一成目录合同名称。"""
+    dataset = config.get("dataset")
+    if isinstance(dataset, dict):
+        dataset = dataset.get("dataset")
+    names = {"pathmnist": "PathMNIST", "covid": "COVID", "kvasir": "Kvasir"}
+    return names.get(str(dataset).lower(), str(dataset))
+
+
 def cfg(config: dict[str, Any], key: str, default: Any = None) -> Any:
     """读取扁平键或一层嵌套键，兼容不同算法的原始 YAML 结构。"""
     if key in config:
@@ -55,11 +69,80 @@ def add_bool(command: list[str], name: str, value: Any) -> None:
         command.append(f"--{name}")
 
 
-def add_smoke_overrides(command: list[str]) -> None:
+def add_smoke_overrides(command: list[str], include_fast_eval: bool = False) -> None:
     """把支持统一 smoke 的入口限制为一次最小计算闭环。"""
     for name, value in (("Iteration", 1), ("num_exp", 1),
                         ("num_eval", 1), ("epoch_eval_train", 1)):
         command.extend([f"--{name}", str(value)])
+    if include_fast_eval:
+        command.append("--fast_eval")
+
+
+def _sha256(path: Path) -> str | None:
+    """计算文件 SHA256；数据 manifest 不存在时返回 None。"""
+    if not path.exists():
+        return None
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _git_value(*args: str) -> str | None:
+    """读取 Git 信息；代码目录不是 Git 仓库时不阻断实验。"""
+    try:
+        result = subprocess.run(
+            ["git", *args], cwd=ROOT, capture_output=True, text=True, check=True
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    return result.stdout.strip()
+
+
+def _run_dir(algorithm: str, dataset: str, stage: str) -> Path:
+    """为每次真实运行建立独立日志目录，避免不同参数相互覆盖。"""
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    return ROOT / "logs" / algorithm / dataset / stage / timestamp
+
+
+def _write_run_manifest(
+    run_dir: Path,
+    *,
+    config_path: Path,
+    algorithm: str,
+    dataset: str,
+    stage: str,
+    command: list[str],
+    cwd: Path,
+    start_time: str,
+    end_time: str | None,
+    return_code: int | None,
+    status: str,
+) -> None:
+    """写入运行级 manifest；它记录实际命令，不把 YAML 元数据当成生效参数。"""
+    data_manifest = DATA_ROOT / dataset / "manifest.json"
+    payload = {
+        "algorithm": algorithm,
+        "dataset": dataset,
+        "stage": stage,
+        "status": status,
+        "command": [str(item) for item in command],
+        "working_directory": str(cwd),
+        "config_path": str(config_path),
+        "config_sha256": _sha256(config_path),
+        "data_manifest_path": str(data_manifest) if data_manifest.exists() else None,
+        "data_manifest_sha256": _sha256(data_manifest),
+        "git_commit": _git_value("rev-parse", "HEAD"),
+        "git_status": _git_value("status", "--porcelain"),
+        "start_time": start_time,
+        "end_time": end_time,
+        "return_code": return_code,
+        "python": sys.executable,
+        "pid": os.getpid(),
+    }
+    with (run_dir / "run_manifest.json").open("w", encoding="utf-8") as handle:
+        json.dump(payload, handle, indent=2, ensure_ascii=False)
 
 
 def output_path(config: dict[str, Any], algorithm: str, dataset: str) -> Path:
@@ -104,11 +187,7 @@ def command_for(
     config_path: Path,
     load_path: str | None = None,
 ) -> tuple[list[str], Path]:
-    dataset = config.get("dataset")
-    if isinstance(dataset, dict):
-        dataset = dataset.get("dataset")
-    dataset_names = {"pathmnist": "PathMNIST", "covid": "COVID", "kvasir": "Kvasir"}
-    dataset = dataset_names.get(str(dataset).lower(), dataset)
+    dataset = dataset_from_config(config)
     if dataset not in SPECS:
         raise ValueError(f"配置中的 dataset 必须是 PathMNIST/COVID/Kvasir: {dataset}")
     validate_contract(config, dataset)
@@ -126,7 +205,9 @@ def command_for(
         else:
             script = ROOT / "adapted" / "dc_dsa_dm" / "main.py"
         command = [sys.executable, str(script)]
-        add(command, "method", method)
+        # main.py 解析 --method；main_DM.py 使用固定的 DM 入口，不接受该参数。
+        if script.name == "main.py":
+            add(command, "method", method)
         for key in ("dataset", "model", "ipc", "eval_mode", "num_exp", "num_eval",
                     "epoch_eval_train", "Iteration", "lr_img", "lr_net",
                     "batch_real", "batch_train", "init", "dsa_strategy", "dis_metric"):
@@ -135,8 +216,8 @@ def command_for(
         add(command, "save_path", save_path)
         add(command, "device", cfg(config, "device", "auto"))
         if stage == "smoke":
-            add_smoke_overrides(command)
-            command.append("--fast_eval")
+            # 只有 main.py 声明了 --fast_eval；main_DM.py 没有这个参数。
+            add_smoke_overrides(command, include_fast_eval=script.name == "main.py")
         return command, script.parent
 
     if algorithm == "datadam":
@@ -156,6 +237,10 @@ def command_for(
     if algorithm == "cafe":
         script = ROOT / "adapted" / "cafe" / "distill.py"
         command = [sys.executable, str(script)]
+        # CAFE 的原始 run.sh 不传 method，入口默认 DC（CAFE 的 feature
+        # alignment 仍由本文件实现）。method=CAFE 是 YAML 标识字段，不能
+        # 传入后误触发其它增强分支。
+        add(command, "method", "DC")
         for key in ("dataset", "model", "ipc", "eval_mode", "num_exp", "num_eval",
                     "epoch_eval_train", "Iteration", "lr_img", "lr_net",
                     "batch_real", "batch_train", "init", "dsa_strategy",
@@ -170,6 +255,13 @@ def command_for(
         return command, script.parent
 
     if algorithm == "mtt":
+        # MTT 的 buffer 和 distill 必须使用同一个网络结构；否则轨迹参数形状不兼容。
+        buffer_section = config.get("buffer", {})
+        buffer_model = buffer_section.get("model", model)
+        if str(buffer_model) != str(model):
+            raise ValueError(
+                f"MTT model 不一致：顶层 model={model}，buffer.model={buffer_model}。"
+            )
         if stage == "buffer":
             script = ROOT / "adapted" / "mtt" / "buffer.py"
             section = config.get("buffer", {})
@@ -219,6 +311,11 @@ def command_for(
         return command, script.parent.parent if stage == "distill" else script.parent.parent
 
     if algorithm == "ncfm":
+        if stage == "smoke":
+            raise ValueError(
+                "NCFM 不能用单条 smoke 命令代替完整流程；请依次运行 "
+                "--stage pretrain、--stage condense、--stage evaluation。"
+            )
         stage_script = {
             "pretrain": ROOT / "adapted" / "ncfm" / "pretrain" / "pretrain_script.py",
             "condense": ROOT / "adapted" / "ncfm" / "condense" / "condense_script.py",
@@ -260,7 +357,57 @@ def main() -> int:
     print("工作目录:", cwd)
     print("命令:", subprocess.list2cmdline([str(x) for x in command]))
     if args.run:
-        return subprocess.run(command, cwd=cwd).returncode
+        dataset_name = dataset_from_config(config)
+        run_dir = _run_dir(algorithm, dataset_name, args.stage)
+        run_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(config_path.resolve(), run_dir / "config.yaml")
+        (run_dir / "command.txt").write_text(
+            subprocess.list2cmdline([str(x) for x in command]), encoding="utf-8"
+        )
+        start_time = datetime.now(timezone.utc).isoformat()
+        _write_run_manifest(
+            run_dir,
+            config_path=config_path.resolve(),
+            algorithm=algorithm,
+            dataset=dataset_name,
+            stage=args.stage,
+            command=command,
+            cwd=cwd,
+            start_time=start_time,
+            end_time=None,
+            return_code=None,
+            status="running",
+        )
+        log_path = run_dir / "stdout.log"
+        with log_path.open("w", encoding="utf-8") as log_handle:
+            process = subprocess.Popen(
+                command,
+                cwd=cwd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
+            )
+            assert process.stdout is not None
+            for line in process.stdout:
+                print(line, end="")
+                log_handle.write(line)
+            return_code = process.wait()
+        _write_run_manifest(
+            run_dir,
+            config_path=config_path.resolve(),
+            algorithm=algorithm,
+            dataset=dataset_name,
+            stage=args.stage,
+            command=command,
+            cwd=cwd,
+            start_time=start_time,
+            end_time=datetime.now(timezone.utc).isoformat(),
+            return_code=return_code,
+            status="success" if return_code == 0 else "failed",
+        )
+        print(f"运行 manifest: {run_dir / 'run_manifest.json'}")
+        return return_code
     return 0
 
 

@@ -40,8 +40,8 @@ def evaluate_syn_data(args, model, train_loader, val_loader, logger=None):
         teacher_path = os.path.join(args.pretrain_dir, f"premodel0_trained.pth.tar")
         load_state_dict(teacher_path, teacher_model)
         train_criterion_sl = SoftCrossEntropy
-    train_criterion = nn.CrossEntropyLoss().cuda()
-    val_criterion = nn.CrossEntropyLoss().cuda()
+    train_criterion = nn.CrossEntropyLoss().to(args.device)
+    val_criterion = nn.CrossEntropyLoss().to(args.device)
     if args.eval_optimizer.lower() == "adamw":
         optimizer = torch.optim.AdamW(model.parameters(), lr=args.adamw_lr)
         if logger and dist.get_rank() == 0:
@@ -67,10 +67,13 @@ def evaluate_syn_data(args, model, train_loader, val_loader, logger=None):
 
     best_acc1, best_acc5 = 0, 0
     acc1, acc5 = 0, 0
-    model = model.cuda()
-    model = torch.nn.parallel.DistributedDataParallel(
-        model, device_ids=[args.rank], output_device=args.rank
-    )
+    model = model.to(args.device)
+    if torch.cuda.is_available():
+        model = torch.nn.parallel.DistributedDataParallel(
+            model, device_ids=[args.rank], output_device=args.rank
+        )
+    else:
+        model = torch.nn.parallel.DistributedDataParallel(model)
 
     if args.dsa:
         aug = DiffAug(strategy=args.dsa_strategy, batch=False)

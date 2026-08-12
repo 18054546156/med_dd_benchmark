@@ -57,7 +57,8 @@ def main_worker(args):
             args.size,
         ).to(args.device)
         model = model.to(args.device)
-        model = DDP(model, device_ids=[args.rank])
+        # GPU 使用原始 device_ids；CPU/Gloo 单进程不传 device_ids。
+        model = DDP(model, device_ids=[args.rank]) if torch.cuda.is_available() else DDP(model)
 
         # Save initial model state
         init_path = os.path.join(args.pretrain_dir, f"premodel{model_id}_init.pth.tar")
@@ -114,7 +115,6 @@ def main_worker(args):
 
 
 def main():
-    import os
     from utils.init_script import init_script
     import argparse
     from argsprocessor.args import ArgsProcessor
