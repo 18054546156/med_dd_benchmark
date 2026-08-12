@@ -44,14 +44,24 @@ class ConfigLoader:
 
     def _flatten_dict(self, d: Dict, parent_key: str = '', sep: str = '_') -> Dict:
         """展平嵌套字典"""
-        items = []
+        items = {}
         for k, v in d.items():
             new_key = f"{parent_key}{sep}{k}" if parent_key else k
             if isinstance(v, dict):
-                items.extend(self._flatten_dict(v, new_key, sep=sep).items())
+                nested = self._flatten_dict(v, new_key, sep=sep)
+                for nested_key, nested_value in nested.items():
+                    if nested_key in items:
+                        raise ValueError(
+                            f"配置展开后出现重复参数名 '{nested_key}'，请重命名字段后再运行。"
+                        )
+                    items[nested_key] = nested_value
             else:
-                items.append((new_key, v))
-        return dict(items)
+                if new_key in items:
+                    raise ValueError(
+                        f"配置展开后出现重复参数名 '{new_key}'，请重命名字段后再运行。"
+                    )
+                items[new_key] = v
+        return items
 
     def to_argparse(self) -> argparse.Namespace:
         """转换为argparse.Namespace对象"""

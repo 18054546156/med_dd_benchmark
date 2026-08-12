@@ -475,11 +475,14 @@ def get_network(model, channel, num_classes, im_size=(32, 32)):
         net = None
         exit('unknown model: %s'%model)
 
-    gpu_num = torch.cuda.device_count()
-    
-    if gpu_num > 1:
-        net = nn.DataParallel(net)
-    net = net.cuda()
+    # 原始 DataDAM 默认无条件使用 CUDA；适配层保留 GPU 行为，
+    # 同时允许无 CUDA 环境完成数据、网络和 one-step 验证。
+    if torch.cuda.is_available():
+        if torch.cuda.device_count() > 1:
+            net = nn.DataParallel(net)
+        net = net.to("cuda")
+    else:
+        net = net.to("cpu")
 
     return net
 

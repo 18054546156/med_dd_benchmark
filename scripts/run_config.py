@@ -163,6 +163,84 @@ def output_path(config: dict[str, Any], algorithm: str, dataset: str) -> Path:
     return (ROOT / value).resolve()
 
 
+def resource_path(config: dict[str, Any], key: str, default: Path) -> Path:
+    """解析 buffer/checkpoint 等资源路径，统一相对项目根目录。
+
+    MTT 和 HoP-TM 的 buffer 必须由当前 YAML 明确指定；运行器不能
+    擅自把不同协议的 buffer 都重定向到同一个目录。
+    """
+    raw = cfg(config, key)
+    if raw is None or str(raw).strip() == "":
+        return default.resolve()
+    path = Path(str(raw)).expanduser()
+    return path.resolve() if path.is_absolute() else (ROOT / path).resolve()
+
+
+def resolve_ncfm_load_path(raw_path: str | os.PathLike[str]) -> Path:
+    """解析 NCFM evaluation 的合成数据路径。
+
+    NCFM 原始 evaluation 入口要求 ``--load_path`` 指向具体的 ``.pt`` 文件，
+    而 condense 阶段通常把多个 ``data_*.pt`` 文件放在 ``distilled_data`` 目录。
+    统一运行器允许用户传目录，但在真正启动原始入口前必须解析成明确文件，
+    否则会把一个目录传给 ``torch.load`` 并在运行中才失败。
+    """
+    path = Path(raw_path).expanduser()
+    path = path.resolve() if path.is_absolute() else (ROOT / path).resolve()
+
+    if path.is_file():
+        if path.suffix.lower() != ".pt":
+            raise ValueError(f"NCFM evaluation 的 load-path 必须是 .pt 文件: {path}")
+        return path
+
+    if not path.exists():
+        raise FileNotFoundError(f"NCFM evaluation 的 load-path 不存在: {path}")
+    if not path.is_dir():
+        raise ValueError(f"NCFM evaluation 的 load-path 不是文件或目录: {path}")
+
+    candidates = list(path.rglob("data_*.pt"))
+    if not candidates:
+        raise FileNotFoundError(
+            f"NCFM evaluation 目录中没有 data_*.pt 合成数据: {path}"
+        )
+
+    # 完整 condense 会生成 data_1000.pt、data_2000.pt 等文件；正式评估
+    # 必须优先选择数字最大的最终迭代文件，不能误评估 data_init.pt。
+    numeric_candidates = []
+    for candidate in candidates:
+        suffix = candidate.stem.removeprefix("data_")
+        try:
+            numeric_candidates.append((int(suffix), candidate))
+        except ValueError:
+            continue
+    if numeric_candidates:
+        return max(numeric_candidates, key=lambda item: item[0])[1]
+
+    # smoke 可能只有 data_init.pt；没有数字迭代文件时再回退到它。
+    initial = path / "data_init.pt"
+    if initial.is_file():
+        return initial
+
+    # 兼容非标准文件名，最后按修改时间兜底。
+    def iteration_key(candidate: Path) -> tuple[int, float]:
+        stem = candidate.stem
+        suffix = stem.removeprefix("data_")
+        try:
+            return (int(suffix), candidate.stat().st_mtime)
+        except ValueError:
+            return (-1, candidate.stat().st_mtime)
+
+    return max(candidates, key=iteration_key)
+
+
+def require_stage(algorithm: str, stage: str, allowed: set[str]) -> None:
+    """拒绝把某算法的阶段误当成另一个阶段执行。"""
+    if stage not in allowed:
+        allowed_text = ", ".join(sorted(allowed))
+        raise ValueError(
+            f"{algorithm} 不支持 stage={stage!r}；允许阶段为: {allowed_text}。"
+        )
+
+
 def validate_contract(config: dict[str, Any], dataset: str) -> None:
     expected = SPECS[dataset]
     section = config.get("dataset") if isinstance(config.get("dataset"), dict) else {}
@@ -197,6 +275,7 @@ def command_for(
     ipc = cfg(config, "ipc", cfg(config, "ipc", 10))
 
     if algorithm in {"dc", "dsa", "dm", "dc_dsa_dm"}:
+        require_stage(algorithm, stage, {"distill", "smoke"})
         method = str(config.get("method", algorithm)).upper()
         if algorithm == "dc_dsa_dm":
             algorithm = method.lower()
@@ -221,6 +300,7 @@ def command_for(
         return command, script.parent
 
     if algorithm == "datadam":
+        require_stage(algorithm, stage, {"distill", "smoke"})
         script = ROOT / "adapted" / "datadam" / "main_DataDAM.py"
         command = [sys.executable, str(script)]
         for key in ("dataset", "model", "ipc", "eval_mode", "num_exp", "num_eval",
@@ -235,6 +315,7 @@ def command_for(
         return command, script.parent
 
     if algorithm == "cafe":
+        require_stage(algorithm, stage, {"distill", "smoke"})
         script = ROOT / "adapted" / "cafe" / "distill.py"
         command = [sys.executable, str(script)]
         # CAFE 的原始 run.sh 不传 method，入口默认 DC（CAFE 的 feature
@@ -255,6 +336,7 @@ def command_for(
         return command, script.parent
 
     if algorithm == "mtt":
+        require_stage(algorithm, stage, {"buffer", "distill"})
         # MTT 的 buffer 和 distill 必须使用同一个网络结构；否则轨迹参数形状不兼容。
         buffer_section = config.get("buffer", {})
         buffer_model = buffer_section.get("model", model)
@@ -272,7 +354,9 @@ def command_for(
                 add(command, key, value)
             add(command, "dsa", str(bool(config.get("augmentation", {}).get("dsa", True))))
             add(command, "data_path", data_path)
-            add(command, "buffer_path", ROOT / "buffers" / "mtt")
+            add(command, "buffer_path", resource_path(
+                config, "buffer_path", ROOT / "buffers" / "mtt"
+            ))
             add_bool(command, "zca", cfg(config, "zca", False))
         else:
             script = ROOT / "adapted" / "mtt" / "distill.py"
@@ -286,11 +370,24 @@ def command_for(
                 add(command, key, value)
             add(command, "dsa", str(bool(config.get("augmentation", {}).get("dsa", True))))
             add(command, "data_path", data_path)
-            add(command, "buffer_path", ROOT / "buffers" / "mtt")
+            buffer_path = resource_path(
+                config, "buffer_path", ROOT / "buffers" / "mtt"
+            )
+            if stage == "distill":
+                expected = buffer_path / dataset
+                if not cfg(config, "zca", False):
+                    expected = Path(f"{expected}_NO_ZCA")
+                expected = expected / str(model)
+                if not expected.exists():
+                    raise FileNotFoundError(
+                        f"MTT distill 需要当前配置对应的 expert buffer，未找到: {expected}。"
+                    )
+            add(command, "buffer_path", buffer_path)
             add(command, "save_path", save_path)
         return command, script.parent
 
     if algorithm == "hop_tm":
+        require_stage(algorithm, stage, {"buffer", "distill"})
         if stage == "buffer":
             script = ROOT / "adapted" / "hop_tm" / "buffer" / "buffer_FTD.py"
             command = [sys.executable, str(script)]
@@ -300,17 +397,32 @@ def command_for(
                 add(command, key, dataset if key == "dataset" else cfg(config, key))
             add(command, "dsa", str(bool(config.get("dsa", True))))
             add(command, "data_path", data_path)
-            add(command, "buffer_path", ROOT / "buffers" / "hop_tm")
+            add(command, "buffer_path", resource_path(
+                config, "buffer_path", ROOT / "buffers" / "hop_tm"
+            ))
             add_bool(command, "zca", cfg(config, "zca", False))
         else:
             script = ROOT / "adapted" / "hop_tm" / "distill" / "distill_high_order_spl.py"
             command = [sys.executable, str(script), "--cfg", str(config_path.resolve())]
             add(command, "data_path", data_path)
-            add(command, "buffer_path", ROOT / "buffers" / "hop_tm")
+            buffer_path = resource_path(
+                config, "buffer_path", ROOT / "buffers" / "hop_tm"
+            )
+            if stage == "distill":
+                expected = buffer_path / dataset
+                if not cfg(config, "zca", False):
+                    expected = Path(f"{expected}_NO_ZCA")
+                expected = expected / str(model)
+                if not expected.exists():
+                    raise FileNotFoundError(
+                        f"HoP-TM distill 需要当前配置对应的 expert buffer，未找到: {expected}。"
+                    )
+            add(command, "buffer_path", buffer_path)
             add(command, "save_path", save_path)
         return command, script.parent.parent if stage == "distill" else script.parent.parent
 
     if algorithm == "ncfm":
+        require_stage(algorithm, stage, {"pretrain", "condense", "evaluation"})
         if stage == "smoke":
             raise ValueError(
                 "NCFM 不能用单条 smoke 命令代替完整流程；请依次运行 "
@@ -330,10 +442,13 @@ def command_for(
                    "--run_mode", run_modes[stage], "--gpu", "0"]
         add(command, "ipc", cfg(config, "ipc", cfg(config, "condense", {}).get("ipc", 1)))
         if stage == "evaluation":
+            # NCFM 原始入口的 val_repeat 不在主 YAML 结构中时使用作者默认值 10；
+            # smoke 配置可显式设为 1，避免把最小闭环误跑成十次完整评估。
+            add(command, "val_repeat", config.get("val_repeat", 10))
             resolved_load_path = load_path or config.get("load_path")
             if not resolved_load_path:
                 raise ValueError("NCFM evaluation 需要显式 --load-path，避免误用错误的合成数据")
-            add(command, "load_path", Path(resolved_load_path).resolve())
+            add(command, "load_path", resolve_ncfm_load_path(resolved_load_path))
         return command, ROOT / "adapted" / "ncfm"
 
     raise ValueError(f"不支持的算法: {algorithm}")

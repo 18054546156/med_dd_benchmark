@@ -31,3 +31,9 @@ env/
 *.swp
 Thumbs.db
 .DS_Store
+# Generated outputs
+logs/
+results/
+buffers/
+logged_files/
+wandb/

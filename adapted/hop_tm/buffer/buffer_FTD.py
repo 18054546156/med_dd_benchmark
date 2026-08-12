@@ -1,8 +1,16 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+import sys
+from pathlib import Path
+
+# 不覆盖 Slurm、torchrun 或统一运行器传入的 GPU；没有外部设置时才使用 0。
+os.environ.setdefault("CUDA_VISIBLE_DEVICES", "0")
 import argparse
-import sys 
-sys.path.append("../")
+
+# 统一运行器可能从项目根目录启动本脚本；使用绝对路径加入 HoP-TM 根目录，
+# 避免依赖当前工作目录而导入到错误的同名 utils 模块。
+_HOP_ROOT = Path(__file__).resolve().parents[1]
+if str(_HOP_ROOT) not in sys.path:
+    sys.path.insert(0, str(_HOP_ROOT))
 import torch
 import torch.nn as nn
 from tqdm import tqdm

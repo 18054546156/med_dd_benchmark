@@ -1,6 +1,6 @@
 # NCFM - COVID - IPC10 full
 # RAW 参考：raw/NCFM/config/TinyImageNet；CONTRACT：3x112x112、4 类。
-# depth=4 是从 TinyImageNet 参考迁移；batch/worker 是 RESOURCE 参数。
+# depth=5 是从 TinyImageNet 参考迁移；batch/worker 是 RESOURCE 参数。
 distibution_train:
   backend: nccl
   init_method: env://

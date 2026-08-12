@@ -57,7 +57,9 @@ class ArgsProcessor:
             argparse.Namespace: Updated argument namespace
         """
         # Read the YAML configuration file
-        with open(self.config_path, 'r') as f:
+        # 配置文件统一使用 UTF-8；Windows 默认 GBK 会把中文注释误判为
+        # 编码错误，导致 NCFM 在真正启动前就失败。
+        with open(self.config_path, 'r', encoding='utf-8') as f:
             config: Dict[str, Any] = yaml.safe_load(f)
 
         # Flatten the configuration dictionary

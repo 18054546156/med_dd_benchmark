@@ -61,3 +61,4 @@ condense:
   beta_for_loss: 0.5
   decode_type: single
   teacher_model_epoch: 1
+val_repeat: 1  # SMOKE：只评估一次；正式配置沿用原始入口默认的 10 次重复。

@@ -3,6 +3,7 @@ import json
 import numpy as np
 import torch
 import datetime
+import socket
 from pathlib import Path
 from .experiment_tracker import Logger
 from .diffaug import remove_aug
@@ -33,7 +34,11 @@ def init_script(args):
         os.environ.setdefault("LOCAL_WORLD_SIZE", "1")
         # 覆盖外部环境可能注入的容器地址，确保单卡使用本机 rendezvous。
         os.environ["MASTER_ADDR"] = "127.0.0.1"
-        os.environ["MASTER_PORT"] = "29501"
+        # Windows 上固定端口很容易被上一次异常退出的进程占用；
+        # 选择一个当前空闲端口，避免 NCFM 在真正训练前因 DDP 初始化失败。
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+            probe.bind(("127.0.0.1", 0))
+            os.environ["MASTER_PORT"] = str(probe.getsockname()[1])
 
     rank, world_size, local_rank, local_world_size, device = (
         initialize_distribution_training(args.backend, args.init_method)

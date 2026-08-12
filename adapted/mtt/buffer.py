@@ -24,7 +24,10 @@ def main(args):
     save_dir = os.path.join(args.buffer_path, args.dataset)
     if args.dataset == "ImageNet":
         save_dir = os.path.join(save_dir, args.subset, str(args.res))
-    if args.dataset in ["CIFAR10", "CIFAR100"] and not args.zca:
+    # 医疗数据和 CIFAR 一样，distill 通过 `_NO_ZCA` 区分未做 ZCA 的轨迹。
+    # 生成端必须使用完全相同的目录合同，否则 buffer 虽然生成成功，
+    # distill 仍会找不到它。
+    if args.dataset in ["PathMNIST", "PathMnist", "COVID", "Kvasir", "CIFAR10", "CIFAR100"] and not args.zca:
         save_dir += "_NO_ZCA"
     save_dir = os.path.join(save_dir, args.model)
     if not os.path.exists(save_dir):
