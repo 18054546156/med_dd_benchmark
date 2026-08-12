@@ -100,27 +100,39 @@ def resolve_medical_data_root(data_path, dataset_name):
     return (PROJECT_ROOT / 'data' / 'prepared' / folder_name).resolve()
 
 
-def _medical_transform(dataset_name, use_zca=False):
-    """创建所有算法共用的医疗数据变换；ZCA 时跳过普通 Normalize。"""
+def _medical_transform(dataset_name, use_zca=False, skip_normalize=False):
+    """创建所有算法共用的医疗数据变换；ZCA 时跳过普通 Normalize。
+
+    Args:
+        dataset_name: 数据集名称
+        use_zca: 是否使用ZCA白化
+        skip_normalize: 是否跳过Normalize (NCFM需要设为True，因为其diffaug会做Normalize)
+    """
     spec = get_medical_spec(dataset_name)
     resize = transforms.Resize(
         spec['im_size'], interpolation=transforms.InterpolationMode.BICUBIC
     )
     steps = [transforms.ToTensor(), resize]
-    if not use_zca:
+    if not use_zca and not skip_normalize:
         steps.append(transforms.Normalize(spec['mean'], spec['std']))
     return transforms.Compose(steps)
 
 
-def load_medical_splits(dataset_name, data_path, use_zca=False):
+def load_medical_splits(dataset_name, data_path, use_zca=False, skip_normalize=False):
     """读取共享的 train/val/test 三个 split。
 
     返回字典而不是某个算法专用的 tuple，算法适配器可以按自己的返回合同
     取用 train、val 和 test；这样不会在每个算法里重新切分数据。
+
+    Args:
+        dataset_name: 数据集名称
+        data_path: 数据根目录
+        use_zca: 是否使用ZCA白化
+        skip_normalize: 是否跳过Normalize (NCFM需要设为True)
     """
     spec = get_medical_spec(dataset_name)
     root = resolve_medical_data_root(data_path, dataset_name)
-    transform = _medical_transform(dataset_name, use_zca=use_zca)
+    transform = _medical_transform(dataset_name, use_zca=use_zca, skip_normalize=skip_normalize)
 
     if spec['format'] == 'MedMNIST':
         # PathMNIST 已按官方 train/val/test 划分落盘时，优先读取统一的
