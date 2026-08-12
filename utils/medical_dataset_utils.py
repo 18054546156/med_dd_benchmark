@@ -100,25 +100,25 @@ def resolve_medical_data_root(data_path, dataset_name):
     return (PROJECT_ROOT / 'data' / 'prepared' / folder_name).resolve()
 
 
-def _medical_transform(dataset_name, use_zca=False, skip_normalize=False):
+def _medical_transform(dataset_name, use_zca=False, normalize=True):
     """创建所有算法共用的医疗数据变换；ZCA 时跳过普通 Normalize。
 
     Args:
         dataset_name: 数据集名称
         use_zca: 是否使用ZCA白化
-        skip_normalize: 是否跳过Normalize (NCFM需要设为True，因为其diffaug会做Normalize)
+        normalize: 是否对当前 split 应用标准 Normalize
     """
     spec = get_medical_spec(dataset_name)
     resize = transforms.Resize(
         spec['im_size'], interpolation=transforms.InterpolationMode.BICUBIC
     )
     steps = [transforms.ToTensor(), resize]
-    if not use_zca and not skip_normalize:
+    if not use_zca and normalize:
         steps.append(transforms.Normalize(spec['mean'], spec['std']))
     return transforms.Compose(steps)
 
 
-def load_medical_splits(dataset_name, data_path, use_zca=False, skip_normalize=False):
+def load_medical_splits(dataset_name, data_path, use_zca=False, train_skip_normalize=False):
     """读取共享的 train/val/test 三个 split。
 
     返回字典而不是某个算法专用的 tuple，算法适配器可以按自己的返回合同
@@ -128,11 +128,14 @@ def load_medical_splits(dataset_name, data_path, use_zca=False, skip_normalize=F
         dataset_name: 数据集名称
         data_path: 数据根目录
         use_zca: 是否使用ZCA白化
-        skip_normalize: 是否跳过Normalize (NCFM需要设为True)
+        train_skip_normalize: 只让 train split 跳过 Normalize；val/test 不跳过
     """
     spec = get_medical_spec(dataset_name)
     root = resolve_medical_data_root(data_path, dataset_name)
-    transform = _medical_transform(dataset_name, use_zca=use_zca, skip_normalize=skip_normalize)
+    train_transform = _medical_transform(
+        dataset_name, use_zca=use_zca, normalize=not train_skip_normalize
+    )
+    eval_transform = _medical_transform(dataset_name, use_zca=use_zca, normalize=True)
 
     if spec['format'] == 'MedMNIST':
         # PathMNIST 已按官方 train/val/test 划分落盘时，优先读取统一的
@@ -140,8 +143,9 @@ def load_medical_splits(dataset_name, data_path, use_zca=False, skip_normalize=F
         folder_splits = [root / split for split in ('train', 'val', 'test')]
         if all(split_root.is_dir() for split_root in folder_splits):
             return {
-                split: datasets.ImageFolder(root / split, transform=transform)
-                for split in ('train', 'val', 'test')
+                'train': datasets.ImageFolder(root / 'train', transform=train_transform),
+                'val': datasets.ImageFolder(root / 'val', transform=eval_transform),
+                'test': datasets.ImageFolder(root / 'test', transform=eval_transform),
             }
         from medmnist import PathMNIST
 
@@ -149,7 +153,12 @@ def load_medical_splits(dataset_name, data_path, use_zca=False, skip_normalize=F
         med_root = str(root)
         splits = {
             split: MedMNISTWrapper(
-                PathMNIST(split=split, root=med_root, download=True, transform=transform)
+                PathMNIST(
+                    split=split,
+                    root=med_root,
+                    download=True,
+                    transform=train_transform if split == 'train' else eval_transform,
+                )
             )
             for split in ('train', 'val', 'test')
         }
@@ -167,8 +176,9 @@ def load_medical_splits(dataset_name, data_path, use_zca=False, skip_normalize=F
         )
 
     return {
-        split: datasets.ImageFolder(root / split, transform=transform)
-        for split in ('train', 'val', 'test')
+        'train': datasets.ImageFolder(root / 'train', transform=train_transform),
+        'val': datasets.ImageFolder(root / 'val', transform=eval_transform),
+        'test': datasets.ImageFolder(root / 'test', transform=eval_transform),
     }
 
 
