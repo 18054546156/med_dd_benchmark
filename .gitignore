@@ -31,3 +31,23 @@ env/
 *.swp
 Thumbs.db
 .DS_Store
+
+# HPC 运行产物、模型和临时备份。
+logs/
+pretrained_models/
+pretrained_models_archive*/
+*.pt
+*.pth
+*.pth.tar
+*.out
+*.err
+*.tar.gz
+*.zip
+*.before_*
+*.py.
+
+# 保留源码、配置和实验脚本；不要把本地凭据提交进仓库。
+*.key
+*.pem
+*.env
+.codex_tmp_*
