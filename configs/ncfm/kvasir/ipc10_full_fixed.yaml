@@ -1,0 +1,61 @@
+distibution_train:
+  backend: nccl
+  init_method: env://
+  workers: 8
+dataset:
+  dataset: kvasir
+  nclass: 8
+  size: 128
+  data_dir: data/prepared
+  load_memory: false
+  batch_real: 128
+  nch: 3
+network:
+  net_type: convnet
+  norm_type: instance
+  depth: 5
+  width: 1.0
+train:
+  evaluation_epochs: 2000
+  epoch_print_freq: 10
+  epoch_eval_interval: 100
+  pertrain_epochs: 60
+  batch_size: 64
+  lr: 0.01
+  adamw_lr: 0.001
+  eval_optimizer: adamw
+  momentum: 0.9
+  weight_decay: 0.0005
+  seed: 0
+  model_num: 20
+augmentation:
+  mixup: cut
+  beta: 1.0
+  mix_p: 0.5
+  rrc: true
+  dsa: true
+  dsa_strategy: color_crop_cutout_flip_scale
+  aug_type: color_crop_cutout
+optimization:
+  optimizer: adamw
+  lr_scale_adam: 0.1
+  lr_img: 0.01
+  mom_img: 0.5
+  lr_sampling_net: 0.001
+save_path:
+  save_dir: results/ncfm_fixed/kvasir
+  pretrain_dir: pretrained_models/ncfm_fixed
+condense:
+  ipc: 10
+  num_premodel: 20
+  niter: 20000
+  iter_calib: 1
+  calib_weight: 1
+  sampling_net: false
+  num_freqs: 4096
+  dis_metrics: NCFM
+  factor: 2
+  alpha_for_loss: 0.5
+  beta_for_loss: 0.5
+  decode_type: single
+  teacher_model_epoch: 20

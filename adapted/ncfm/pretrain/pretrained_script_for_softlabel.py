@@ -167,7 +167,8 @@ def main():
     parser.add_argument("--load_path", type=str, help="Path to load the synset")
     args = parser.parse_args()
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu)
+    # Slurm/torchrun already provide the correct visible-device mapping.
+    # Do not rewrite CUDA_VISIBLE_DEVICES after torch has been imported.
 
     args_processor = ArgsProcessor(args.config_path)
 

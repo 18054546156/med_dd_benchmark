@@ -1,5 +1,6 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "3"
+# HPC/Slurm 已经分配 GPU 时必须保留它的映射；本地直接运行才默认使用 GPU 0。
+os.environ.setdefault("CUDA_VISIBLE_DEVICES", "0")
 import sys
 sys.path.append("../")
 import argparse

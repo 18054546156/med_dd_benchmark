@@ -38,7 +38,9 @@ def main(args):
 
     manual_seed()
 
-    os.environ['CUDA_VISIBLE_DEVICES'] = ','.join([str(x) for x in args.device])
+    # Slurm 会在环境变量中注入分配到的 GPU 映射；不要用 YAML 的 [0] 覆盖它。
+    if 'CUDA_VISIBLE_DEVICES' not in os.environ:
+        os.environ['CUDA_VISIBLE_DEVICES'] = ','.join([str(x) for x in args.device])
 
     if args.zca and args.texture:
         raise AssertionError("Cannot use zca and texture together")

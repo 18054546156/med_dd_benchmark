@@ -92,8 +92,14 @@ def _load_medical_dataset(dataset, data_dir, size, evaluation_split="val"):
         "kvasir": "Kvasir",
     }[dataset]
     spec = MEDICAL_DATASET_SPECS[spec_name]
-    # 统一工具负责固定尺寸、归一化、标签标量化和 prepared 路径解析。
-    splits = load_medical_splits(spec_name, data_dir)
+    # Keep NCFM's diffaug/save utilities aligned with the shared medical loader.
+    MEANS[dataset] = list(spec["mean"])
+    STDS[dataset] = list(spec["std"])
+    # 统一工具负责固定尺寸、标签标量化和 prepared 路径解析。
+    # Keep the training transform compatible with the original NCFM pipeline.
+    splits = load_medical_splits(
+        spec_name, data_dir, train_skip_normalize=True
+    )
     train_dataset = splits["train"]
     if evaluation_split not in {"val", "test"}:
         raise ValueError(f"不支持的医疗评估 split: {evaluation_split}")

@@ -3,7 +3,6 @@ import json
 import numpy as np
 import torch
 import datetime
-from pathlib import Path
 from .experiment_tracker import Logger
 from .diffaug import remove_aug
 import torch.distributed as dist
@@ -42,21 +41,8 @@ def init_script(args):
     args.it_save, args.it_log = set_iteration_parameters(args.niter, args.debug)
 
     args.pretrain_dir = set_Pretrain_Directory(
-        args.pretrain_dir,
-        args.dataset,
-        args.depth,
-        args.width,
-        args.norm_type,
-        args.seed,
+        args.pretrain_dir, args.dataset, args.depth
     )
-
-    # 配置中的相对路径统一以 benchmark 根目录为基准，避免从 adapted/ncfm
-    # 启动时把 checkpoint 和结果写入算法源码目录。
-    project_root = Path(__file__).resolve().parents[3]
-    for path_key in ("data_dir", "save_dir"):
-        path_value = Path(str(getattr(args, path_key)))
-        if not path_value.is_absolute():
-            setattr(args, path_key, str((project_root / path_value).resolve()))
 
     args.exp_name, args.save_dir, args.lr_img = set_experiment_name_and_save_Dir(
         args.run_mode,
@@ -101,28 +87,13 @@ def set_iteration_parameters(niter, debug):
     return it_save, it_log
 
 
-def set_Pretrain_Directory(pretrain_dir, dataset, depth, width=1.0,
-                           norm_type="instance", seed=0):
-    """生成可审计的 NCFM 预训练目录：数据集/backbone/seed。"""
-    project_root = Path(__file__).resolve().parents[3]
-    base = Path(str(pretrain_dir)).expanduser()
-    if not base.is_absolute():
-        base = project_root / base
+def set_Pretrain_Directory(pretrain_dir, dataset, depth):
 
     if dataset.lower() == "imagenet":
-        return str(base / dataset / f"ResNet-{depth}")
-
-    dataset_name = {
-        "pathmnist": "PathMNIST",
-        "covid": "COVID",
-        "kvasir": "Kvasir",
-    }.get(dataset.lower(), dataset)
-    width_value = int(round(128 * float(width)))
-    norm_name = {"instancenorm": "IN", "batchnorm": "BN"}.get(
-        str(norm_type).lower(), str(norm_type).upper()
-    )
-    backbone = f"ConvNetD{depth}_{norm_name}_W{width_value}"
-    return str(base / dataset_name / backbone / f"seed{int(seed)}")
+        pretrain_dir = f"./{pretrain_dir}/{dataset}/ResNet-{depth}"
+    else:
+        pretrain_dir = f"./{pretrain_dir}/{dataset}"
+    return pretrain_dir
 
 
 def set_experiment_name_and_save_Dir(
@@ -139,7 +110,15 @@ def set_experiment_name_and_save_Dir(
     lr,
     num_freqs,
 ):
-    timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M")
+    # All distributed ranks must use one directory.  Generating the timestamp
+    # independently can cross a minute boundary and split the evaluation logs.
+    if dist.get_rank() == 0:
+        timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M")
+    else:
+        timestamp = ""
+    timestamp_holder = [timestamp]
+    dist.broadcast_object_list(timestamp_holder, src=0)
+    timestamp = timestamp_holder[0]
     # Set the base save directory path according to the run_mode
     if run_mode == "Condense":
         assert ipc > 0, "IPC must be greater than 0"
@@ -180,8 +159,7 @@ def set_random_seeds(seed):
     if seed > 0:
         np.random.seed(seed)
         torch.manual_seed(seed)
-        if torch.cuda.is_available():
-            torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed(seed)
         if dist.get_rank() == 0:
             print(f"Set Random Seed as {seed}")
 
@@ -193,9 +171,8 @@ def setup_logging_and_directories(args, run_mode, save_dir):
             for subdir in subdirs:
                 os.makedirs(os.path.join(save_dir, subdir), exist_ok=True)
         args_log_path = os.path.join(save_dir, "args.log")
-        with open(args_log_path, "w", encoding="utf-8") as f:
-            # args.device 是 torch.device，使用字符串 fallback 保证日志落盘不阻断训练。
-            json.dump(vars(args), f, indent=3, default=str)
+        with open(args_log_path, "w") as f:
+            json.dump(vars(args), f, indent=3)
     dist.barrier()
     logger = Logger(args.save_dir)
     dist.barrier()

@@ -34,7 +34,7 @@ case "$DATASET" in
 esac
 
 CONFIG="$ROOT/configs/ncfm/$SLUG/ipc10_full.yaml"
-PRETRAIN_DIR="$ROOT/pretrained_models/$SLUG/$SLUG"
+PRETRAIN_DIR="$ROOT/pretrained_models/ncfm/$SLUG"
 RESULT_ROOT="$ROOT/results/ncfm/$SLUG"
 
 mkdir -p "$ROOT/logs" "$ROOT/pretrained_models" "$ROOT/results"

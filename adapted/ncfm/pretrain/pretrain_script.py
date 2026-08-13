@@ -153,7 +153,8 @@ def main():
     parser.add_argument("--tf32", action="store_true", default=True, help="Enable TF32")
     args = parser.parse_args()
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu)
+    # Slurm/torchrun already provide the correct visible-device mapping.
+    # Do not rewrite CUDA_VISIBLE_DEVICES after torch has been imported.
 
     args_processor = ArgsProcessor(args.config_path)
 

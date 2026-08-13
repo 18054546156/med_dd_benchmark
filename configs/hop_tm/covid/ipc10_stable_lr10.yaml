@@ -1,0 +1,45 @@
+# HoP-TM COVID IPC10 numerical-stability diagnostic.
+#
+# This is a diagnostic fallback derived from ipc10_full.yaml. The only
+# algorithmic value changed is lr_img: 100 -> 10. The raw config remains
+# unchanged and must not be replaced by this file in the final report unless
+# the raw run is documented as numerically unstable.
+
+dataset: COVID
+num_classes: 4
+channel: 3
+im_size: [112, 112]
+device: [0]
+model: ConvNetD5
+ipc: 10
+syn_steps: 80
+expert_epochs: 2
+lr_img: 10
+lr_teacher: 0.001
+buffer_path: buffers/hop_tm
+data_path: data/prepared
+ema_decay: 0.995
+Iteration: 10000
+batch_syn: 10
+batch_train: 128
+batch_real: 256
+num_experts: 100
+train_epochs: 100
+project: covid_high_order_stable_lr10
+num_eval: 1
+eval_it: 500
+skip_first_eva: true
+pix_init: real
+high_order: true
+base_threshold: 1e-10
+growing_factor: 1.3
+lamb: 1.0
+min_start_epoch: 0
+max_start_epoch: 20
+lr_lr: 1e-7
+zca: false
+dsa: true
+dsa_strategy: color_crop_cutout_flip_scale_rotate
+save_path: results/hop_tm_distill_retry/COVID_lr10/ipc10
+save_images: true
+save_interval: 10

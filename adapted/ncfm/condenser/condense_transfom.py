@@ -64,7 +64,10 @@ def get_train_transform(
         resize = [] if from_tensor else [
             transforms.Resize((size or medical_sizes[dataset], size or medical_sizes[dataset]))
         ]
-        normalize = [] if from_tensor else [
+        # Synthetic tensors are stored in raw [0, 1] space. Normalize them
+        # once when they enter the model, including from_tensor=True used by
+        # NCFM evaluation; real validation data follows the same convention.
+        normalize = [
             transforms.Normalize(medical_mean[dataset], medical_std[dataset])
         ]
         aug = [transforms.RandomHorizontalFlip()] if augment else []

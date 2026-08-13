@@ -103,7 +103,8 @@ if __name__ == "__main__":
 
     args = args_processor.add_args_from_yaml(args)
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu)
+    # Slurm/torchrun already provide the correct visible-device mapping.
+    # Do not rewrite CUDA_VISIBLE_DEVICES after torch has been imported.
 
     init_script(args)
 
