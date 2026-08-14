@@ -36,7 +36,7 @@ def verify_run_manifest_integrity(root: Path, payload: dict) -> dict:
     """Verify all mutable inputs and outputs bound by a run manifest."""
     checked = {
         key: verify_record(root, payload.get(key), key)
-        for key in ("prepared_manifest", "statistics", "config", "synthetic")
+        for key in ("prepared_manifest", "data_audit", "statistics", "config", "synthetic")
     }
     if payload.get("method") == "HoP-TM":
         selection_record = verify_record(

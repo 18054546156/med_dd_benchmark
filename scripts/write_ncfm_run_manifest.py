@@ -91,6 +91,9 @@ def main() -> int:
     parser.add_argument("--stderr", type=Path, required=True)
     args = parser.parse_args()
     root = args.root.resolve()
+    math_root = Path(os.environ.get(
+        "NCFM_MATH_ROOT", root / "research" / "ncfm_mathematical_analysis"
+    )).expanduser().resolve()
 
     def from_root(path: Path) -> Path:
         return path if path.is_absolute() else root / path
@@ -108,14 +111,15 @@ def main() -> int:
         root / "data" / "prepared" / args.dataset / "manifest.json",
         "prepared dataset manifest",
     )
+    data_audit = required(
+        math_root / "data_audit" / "current_ready.json",
+        "current prepared-data audit",
+    )
     file_sets = teachers(pretrain)
     if f"_{args.run_id}" not in str(synthetic.parent):
         raise ValueError(f"synthetic path is not scoped to RUN_ID={args.run_id}: {synthetic}")
 
     slug = DATASETS[args.dataset]["slug"]
-    math_root = Path(os.environ.get(
-        "NCFM_MATH_ROOT", root / "research" / "ncfm_mathematical_analysis"
-    )).expanduser().resolve()
     output = math_root / "runs" / "ncfm" / slug / args.run_id / "run_manifest.json"
     output.parent.mkdir(parents=True, exist_ok=True)
     command = output.parent / "command.txt"
@@ -138,6 +142,7 @@ def main() -> int:
             "path": str(prepared_manifest),
             "sha256": digest(prepared_manifest),
         },
+        "data_audit": {"path": str(data_audit), "sha256": digest(data_audit)},
         "statistics": {"path": str(statistics), "sha256": digest(statistics)},
         "config": {"path": str(config), "sha256": digest(config)},
         "source_provenance": source_provenance(root),

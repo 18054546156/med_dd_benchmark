@@ -18,6 +18,10 @@ ROOT="${BENCHMARK_ROOT:-/project/prj-sis01/xiaoyu_xu/med_dd_project/dd_benchmark
 export NCFM_MATH_ROOT="${NCFM_MATH_ROOT:-$ROOT/research/ncfm_mathematical_analysis}"
 PY="/home/xiaoyuxu2/.conda/envs/meddd/bin/python"
 cd "$ROOT"
+"$PY" scripts/build_current_data_audit.py \
+  --root "$ROOT" \
+  --output "$NCFM_MATH_ROOT/data_audit/current_ready.json" \
+  --verify-only
 for DATASET in PathMNIST COVID Kvasir; do
   "$PY" research/ncfm_medical_analysis/code/contract_test.py --dataset "$DATASET"
 done

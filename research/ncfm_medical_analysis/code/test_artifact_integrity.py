@@ -21,7 +21,7 @@ class ArtifactIntegrityTests(unittest.TestCase):
             return path
 
         records = {}
-        for key in ("prepared_manifest", "statistics", "config", "synthetic"):
+        for key in ("prepared_manifest", "data_audit", "statistics", "config", "synthetic"):
             path = file(f"records/{key}.bin", key)
             records[key] = {"path": str(path), "sha256": sha256(path)}
         provenance = {}
