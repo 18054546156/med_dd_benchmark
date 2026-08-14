@@ -100,6 +100,10 @@ def main() -> int:
         root / "data" / "prepared" / args.dataset / "statistics.json",
         "train-only statistics",
     )
+    prepared_manifest = required(
+        root / "data" / "prepared" / args.dataset / "manifest.json",
+        "prepared dataset manifest",
+    )
     file_sets = teachers(pretrain)
     if f"_{args.run_id}" not in str(synthetic.parent):
         raise ValueError(f"synthetic path is not scoped to RUN_ID={args.run_id}: {synthetic}")
@@ -126,6 +130,10 @@ def main() -> int:
         "dataset": args.dataset,
         "run_id": args.run_id,
         "dataset_contract": DATASETS[args.dataset],
+        "prepared_manifest": {
+            "path": str(prepared_manifest),
+            "sha256": digest(prepared_manifest),
+        },
         "statistics": {"path": str(statistics), "sha256": digest(statistics)},
         "config": {"path": str(config), "sha256": digest(config)},
         "source_provenance": source_provenance(root),

@@ -124,6 +124,12 @@ def check_run_binding(root: Path, entry: dict, dataset: str, teacher_dir: Path, 
     contract = payload.get("method_contract")
     if not isinstance(contract, dict):
         raise ValueError(f"run_manifest has no method_contract: {path}")
+    prepared = payload.get("prepared_manifest", {})
+    prepared_path = resolve(root, str(prepared.get("path", "")))
+    if not prepared_path.is_file():
+        raise FileNotFoundError(f"run_manifest has no prepared dataset manifest: {path}")
+    if prepared.get("sha256") != sha256(prepared_path):
+        raise ValueError(f"prepared dataset manifest hash mismatch: {prepared_path}")
     expected_contract = {
         "pretrain_teachers": 20,
         "condense_iterations": 20000,
@@ -175,7 +181,14 @@ def main() -> int:
             if not stats_path.is_file():
                 raise FileNotFoundError(f"missing statistics: {stats_path}")
             stats_payload = json.loads(stats_path.read_text(encoding="utf-8"))
+            if stats_payload.get("status", "complete") != "complete":
+                raise ValueError(
+                    f"statistics audit did not pass: {stats_path}; "
+                    f"status={stats_payload.get('status')}"
+                )
             stats = stats_payload.get("statistics", stats_payload)
+            if int(stats.get("duplicate_file_count", 0)):
+                raise ValueError(f"duplicate RGB pixels remain: {stats_path}")
             if len(stats.get("mean", [])) != 3 or len(stats.get("std", [])) != 3:
                 raise ValueError(f"invalid train-only statistics: {stats_path}")
             if stats.get("statistics_split") != "train":

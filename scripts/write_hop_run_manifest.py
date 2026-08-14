@@ -77,6 +77,10 @@ def main() -> int:
         root / "data" / "prepared" / args.dataset / "statistics.json",
         "train-only statistics",
     )
+    prepared_manifest = required(
+        root / "data" / "prepared" / args.dataset / "manifest.json",
+        "prepared dataset manifest",
+    )
     buffer_dir = from_root(args.buffer_dir).resolve()
     buffer_files = sorted(buffer_dir.glob("replay_buffer_*.pt"))
     if len(buffer_files) != 10:
@@ -98,6 +102,10 @@ def main() -> int:
         "method": "HoP-TM",
         "dataset": args.dataset,
         "run_id": args.run_id,
+        "prepared_manifest": {
+            "path": str(prepared_manifest),
+            "sha256": digest(prepared_manifest),
+        },
         "statistics": {"path": str(statistics), "sha256": digest(statistics)},
         "config": {"path": str(config), "sha256": digest(config)},
         "source_provenance": source_provenance(root),
