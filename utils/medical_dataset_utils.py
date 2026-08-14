@@ -63,12 +63,21 @@ def get_medical_statistics(dataset_name, data_path):
     root = resolve_medical_data_root(data_path, dataset_name)
     path = root / 'statistics.json'
     if not path.is_file():
-        return list(spec['mean']), list(spec['std'])
+        raise FileNotFoundError(
+            f'Missing authoritative train-only medical statistics: {path}'
+        )
 
     import json
 
     payload = json.loads(path.read_text(encoding='utf-8'))
+    if payload.get('status', 'complete') != 'complete':
+        raise ValueError(
+            f'Medical statistics audit did not pass: {path}; '
+            f"status={payload.get('status')}"
+        )
     stats = payload.get('statistics', payload)
+    if int(stats.get('duplicate_file_count', 0)):
+        raise ValueError(f'Medical dataset contains duplicate RGB pixels: {path}')
     mean = stats.get('mean')
     std = stats.get('std')
     if (not isinstance(mean, list) or not isinstance(std, list)
