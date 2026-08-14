@@ -2,6 +2,7 @@ import os
 import json
 import numpy as np
 import torch
+import random
 import datetime
 from .experiment_tracker import Logger
 from .diffaug import remove_aug
@@ -89,6 +90,12 @@ def set_iteration_parameters(niter, debug):
 
 def set_Pretrain_Directory(pretrain_dir, dataset, depth):
 
+    # Formal Slurm runs provide an isolated directory for the complete
+    # pretrain/condense pair, preventing reuse of teachers from old runs.
+    run_dir = os.environ.get("NCFM_PRETRAIN_RUN_DIR")
+    if run_dir:
+        return os.path.abspath(os.path.expanduser(run_dir))
+
     if dataset.lower() == "imagenet":
         pretrain_dir = f"./{pretrain_dir}/{dataset}/ResNet-{depth}"
     else:
@@ -110,7 +117,21 @@ def set_experiment_name_and_save_Dir(
     lr,
     num_freqs,
 ):
-    timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M")
+    # All distributed ranks must use one directory.  Generating the timestamp
+    # independently can cross a minute boundary and split the evaluation logs.
+    if dist.get_rank() == 0:
+        # RUN_ID makes an experiment addressable without selecting artifacts
+        # by mtime. It is optional for interactive runs and required by the
+        # formal Slurm wrappers.
+        timestamp = os.environ.get(
+            "NCFM_RUN_ID",
+            datetime.datetime.now().strftime("%Y%m%d-%H%M"),
+        )
+    else:
+        timestamp = ""
+    timestamp_holder = [timestamp]
+    dist.broadcast_object_list(timestamp_holder, src=0)
+    timestamp = timestamp_holder[0]
     # Set the base save directory path according to the run_mode
     if run_mode == "Condense":
         assert ipc > 0, "IPC must be greater than 0"
@@ -147,13 +168,15 @@ def set_experiment_name_and_save_Dir(
 
 
 def set_random_seeds(seed):
-
-    if seed > 0:
-        np.random.seed(seed)
-        torch.manual_seed(seed)
-        torch.cuda.manual_seed(seed)
-        if dist.get_rank() == 0:
-            print(f"Set Random Seed as {seed}")
+    # Seed zero is a valid formal replicate. The old guard left seed=0 to
+    # framework entropy, making the first replication non-reproducible.
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+    if dist.get_rank() == 0:
+        print(f"Set Random Seed as {seed}")
 
 
 def setup_logging_and_directories(args, run_mode, save_dir):

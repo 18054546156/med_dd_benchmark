@@ -16,7 +16,7 @@ dataset:
 network:
   net_type: convnet
   norm_type: instance
-  depth: 4              # MIGRATION：参考 raw TinyImageNet
+  depth: 5              # CONTROLLED：与 HoP-TM COVID ConvNetD5 对齐
   width: 1.0
 train:
   evaluation_epochs: 2000
@@ -46,8 +46,8 @@ optimization:
   mom_img: 0.5
   lr_sampling_net: 0.001
 save_path:
-  save_dir: results/ncfm/covid
-  pretrain_dir: pretrained_models/covid
+  save_dir: results/ncfm
+  pretrain_dir: pretrained_models/ncfm
 condense:
   ipc: 10
   num_premodel: 20

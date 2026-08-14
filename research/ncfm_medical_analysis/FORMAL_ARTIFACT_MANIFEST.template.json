@@ -1,0 +1,33 @@
+{
+  "protocol": "ncfm-medical-phase1-real-v3",
+  "datasets": {
+    "PathMNIST": {
+      "statistics": "data/prepared/PathMNIST/statistics.json",
+      "teacher_dir": "pretrained_models/ncfm/pathmnist/<formal-run>",
+      "synthetic": "results/ncfm/pathmnist/condense/<formal-run>/distilled_data/data_20000.pt",
+      "provenance": {"config": "configs/ncfm/pathmnist/ipc10_full.yaml", "command": "logs/ncfm-pathmnist-command.txt", "stdout": "logs/ncfm-pathmnist.out", "stderr": "logs/ncfm-pathmnist.err"},
+      "condense_seeds": [],
+      "pairs": [],
+      "pixel_space_pairs": []
+    },
+    "COVID": {
+      "statistics": "data/prepared/COVID/statistics.json",
+      "teacher_dir": "pretrained_models/ncfm/covid/<formal-run>",
+      "synthetic": "results/ncfm/covid/condense/<formal-run>/distilled_data/data_20000.pt",
+      "provenance": {"config": "configs/ncfm/covid/ipc10_full.yaml", "command": "logs/ncfm-covid-command.txt", "stdout": "logs/ncfm-covid.out", "stderr": "logs/ncfm-covid.err"},
+      "condense_seeds": [],
+      "pairs": [],
+      "pixel_space_pairs": []
+    },
+    "Kvasir": {
+      "statistics": "data/prepared/Kvasir/statistics.json",
+      "teacher_dir": "pretrained_models/ncfm/kvasir/<formal-run>",
+      "synthetic": "results/ncfm/kvasir/condense/<formal-run>/distilled_data/data_20000.pt",
+      "provenance": {"config": "configs/ncfm/kvasir/ipc10_full.yaml", "command": "logs/ncfm-kvasir-command.txt", "stdout": "logs/ncfm-kvasir.out", "stderr": "logs/ncfm-kvasir.err"},
+      "condense_seeds": [],
+      "pairs": [],
+      "pixel_space_pairs": []
+    }
+  },
+  "instruction": "Replace each <formal-run> with an explicitly verified artifact path before submission. Do not select by mtime."
+}

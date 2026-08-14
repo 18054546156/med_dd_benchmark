@@ -15,6 +15,47 @@ logged_files/
 adapted/*/wandb/
 adapted/*/logged_files/
 
+# Formal research run metadata is generated on HPC; source protocols and
+# templates under research/ remain versioned.
+research/ncfm_medical_analysis/runs/
+research/ncfm_medical_analysis/dataset_analysis/
+research/ncfm_medical_analysis/task_analysis/
+research/ncfm_medical_analysis/figures/
+research/ncfm_medical_analysis/phase2/
+research/ncfm_medical_analysis/formal_*_preflight.json
+research/ncfm_medical_analysis/formal_*_validation_*.json
+research/ncfm_medical_analysis/formal_artifact_manifest.json
+research/ncfm_medical_analysis/formal_eval_manifest.json
+research/ncfm_medical_analysis/production_manifest.json
+research/ncfm_medical_analysis/phase2_variant_manifest.json
+research/ncfm_medical_analysis/phase2_variant_report.json
+research/ncfm_medical_analysis/phase2_variant_report.md
+research/ncfm_medical_analysis/formal_report.json
+research/ncfm_medical_analysis/formal_report.md
+research/ncfm_medical_analysis/medical_tuning_plan.json
+research/ncfm_medical_analysis/medical_tuning_plan.md
+research/ncfm_medical_analysis/contract_*.json
+research/ncfm_medical_analysis/runtime_contract_*.json
+research/ncfm_medical_analysis/submissions/
+
+# Mathematical NCFM diagnostics are intentionally isolated from the source
+# protocols and medical dataset/task analysis above.
+research/ncfm_mathematical_analysis/runs/
+research/ncfm_mathematical_analysis/phase2/
+research/ncfm_mathematical_analysis/figures/
+research/ncfm_mathematical_analysis/submissions/
+research/ncfm_mathematical_analysis/formal_*.json
+research/ncfm_mathematical_analysis/formal_report.md
+research/ncfm_mathematical_analysis/phase1_replication_manifest.json
+research/ncfm_mathematical_analysis/phase2_variant_manifest.json
+research/ncfm_mathematical_analysis/phase2_variant_report.json
+research/ncfm_mathematical_analysis/phase2_variant_report.md
+research/ncfm_mathematical_analysis/medical_tuning_plan.json
+research/ncfm_mathematical_analysis/medical_tuning_plan.md
+research/ncfm_mathematical_analysis/contract_*.json
+research/ncfm_mathematical_analysis/runtime_contract_*.json
+research/ncfm_mathematical_analysis/production_followup_*.json
+
 # Python 缓存、日志和本地环境文件。
 __pycache__/
 *.py[cod]

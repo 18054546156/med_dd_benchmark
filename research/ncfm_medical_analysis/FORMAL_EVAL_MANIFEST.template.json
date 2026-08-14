@@ -1,0 +1,18 @@
+{
+  "protocol": "controlled-eval-v1",
+  "instruction": "List only explicitly verified completed evaluator JSON files. Do not use globbing, mtime, or legacy outputs.",
+  "evaluations": [
+    {"method": "NCFM", "dataset": "PathMNIST", "architecture": "ConvNet", "synthetic": "results/ncfm/pathmnist/condense/<formal-run>/distilled_data/data_20000.pt", "path": "results/controlled_eval/ncfm/PathMNIST/ConvNet/job_<job-id>.json"},
+    {"method": "NCFM", "dataset": "PathMNIST", "architecture": "ResNet18", "synthetic": "results/ncfm/pathmnist/condense/<formal-run>/distilled_data/data_20000.pt", "path": "results/controlled_eval/ncfm/PathMNIST/ResNet18/job_<job-id>.json"},
+    {"method": "HoP", "dataset": "PathMNIST", "architecture": "ConvNet", "synthetic": "results/hop_tm/<formal-run>/PathMNIST/synthetic_data.pt", "path": "results/controlled_eval/hop/PathMNIST/ConvNet/job_<job-id>.json"},
+    {"method": "HoP", "dataset": "PathMNIST", "architecture": "ResNet18", "synthetic": "results/hop_tm/<formal-run>/PathMNIST/synthetic_data.pt", "path": "results/controlled_eval/hop/PathMNIST/ResNet18/job_<job-id>.json"},
+    {"method": "NCFM", "dataset": "COVID", "architecture": "ConvNet", "synthetic": "results/ncfm/covid/condense/<formal-run>/distilled_data/data_20000.pt", "path": "results/controlled_eval/ncfm/COVID/ConvNet/job_<job-id>.json"},
+    {"method": "NCFM", "dataset": "COVID", "architecture": "ResNet18", "synthetic": "results/ncfm/covid/condense/<formal-run>/distilled_data/data_20000.pt", "path": "results/controlled_eval/ncfm/COVID/ResNet18/job_<job-id>.json"},
+    {"method": "HoP", "dataset": "COVID", "architecture": "ConvNet", "synthetic": "results/hop_tm/<formal-run>/COVID/synthetic_data.pt", "path": "results/controlled_eval/hop/COVID/ConvNet/job_<job-id>.json"},
+    {"method": "HoP", "dataset": "COVID", "architecture": "ResNet18", "synthetic": "results/hop_tm/<formal-run>/COVID/synthetic_data.pt", "path": "results/controlled_eval/hop/COVID/ResNet18/job_<job-id>.json"},
+    {"method": "NCFM", "dataset": "Kvasir", "architecture": "ConvNet", "synthetic": "results/ncfm/kvasir/condense/<formal-run>/distilled_data/data_20000.pt", "path": "results/controlled_eval/ncfm/Kvasir/ConvNet/job_<job-id>.json"},
+    {"method": "NCFM", "dataset": "Kvasir", "architecture": "ResNet18", "synthetic": "results/ncfm/kvasir/condense/<formal-run>/distilled_data/data_20000.pt", "path": "results/controlled_eval/ncfm/Kvasir/ResNet18/job_<job-id>.json"},
+    {"method": "HoP", "dataset": "Kvasir", "architecture": "ConvNet", "synthetic": "results/hop_tm/<formal-run>/Kvasir/synthetic_data.pt", "path": "results/controlled_eval/hop/Kvasir/ConvNet/job_<job-id>.json"},
+    {"method": "HoP", "dataset": "Kvasir", "architecture": "ResNet18", "synthetic": "results/hop_tm/<formal-run>/Kvasir/synthetic_data.pt", "path": "results/controlled_eval/hop/Kvasir/ResNet18/job_<job-id>.json"}
+  ]
+}

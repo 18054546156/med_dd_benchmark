@@ -57,7 +57,9 @@ def main_worker(args):
             args.size,
         ).to(args.device)
         model = model.to(args.device)
-        model = DDP(model, device_ids=[args.rank])
+        # DDP device_ids are local to the node; using global rank breaks as
+        # soon as a multi-node allocation is used.
+        model = DDP(model, device_ids=[args.local_rank])
 
         # Save initial model state
         init_path = os.path.join(args.pretrain_dir, f"premodel{model_id}_init.pth.tar")

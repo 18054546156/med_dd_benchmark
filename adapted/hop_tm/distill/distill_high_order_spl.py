@@ -38,7 +38,9 @@ def main(args):
 
     manual_seed()
 
-    os.environ['CUDA_VISIBLE_DEVICES'] = ','.join([str(x) for x in args.device])
+    # Slurm 会在环境变量中注入分配到的 GPU 映射；不要用 YAML 的 [0] 覆盖它。
+    if 'CUDA_VISIBLE_DEVICES' not in os.environ:
+        os.environ['CUDA_VISIBLE_DEVICES'] = ','.join([str(x) for x in args.device])
 
     if args.zca and args.texture:
         raise AssertionError("Cannot use zca and texture together")
@@ -433,9 +435,15 @@ def main(args):
         param_loss /= num_params
         param_dist /= num_params
 
+        if not torch.isfinite(param_dist) or param_dist.item() <= 0:
+            raise FloatingPointError(
+                f"Non-finite/zero trajectory denominator at iteration {it}: "
+                f"param_dist={param_dist.detach().item()}"
+            )
         param_loss /= param_dist
 
         grand_loss = param_loss
+        angle_loss = torch.zeros((), device=args.device)
 
         if args.high_order:
             td = (teacher.unsqueeze(0) - teacher.unsqueeze(1))
@@ -449,10 +457,24 @@ def main(args):
             angle_loss = F.smooth_l1_loss(s_angle, t_angle, reduction='mean') * args.lamb
             grand_loss += angle_loss
 
+        if not torch.isfinite(grand_loss):
+            raise FloatingPointError(
+                f"Non-finite HoP distill loss at iteration {it}: "
+                f"grand_loss={grand_loss.detach().item()}, "
+                f"param_loss={param_loss.detach().item()}, "
+                f"angle_loss={angle_loss.detach().item()}, "
+                f"syn_lr={syn_lr.detach().item()}"
+            )
+
         optimizer_img.zero_grad()
         optimizer_lr.zero_grad()
 
         grand_loss.backward()
+
+        if image_syn.grad is None or not torch.isfinite(image_syn.grad).all():
+            raise FloatingPointError(f"Non-finite HoP image gradient at iteration {it}")
+        if syn_lr.grad is None or not torch.isfinite(syn_lr.grad).all():
+            raise FloatingPointError(f"Non-finite HoP learning-rate gradient at iteration {it}")
 
         optimizer_img.step()
         optimizer_lr.step()

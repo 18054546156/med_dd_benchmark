@@ -53,6 +53,31 @@ def get_medical_spec(dataset_name):
         raise ValueError(f'不支持的数据集: {dataset_name}; 可选值: {supported}') from exc
 
 
+def get_medical_statistics(dataset_name, data_path):
+    """读取 prepared 数据的 train-only 统计量。
+
+    ``statistics.json`` 是正式实验的权威来源；固定 spec 仅作为旧 smoke
+    数据布局的兼容 fallback，不能作为正式结果的统计量证据。
+    """
+    spec = get_medical_spec(dataset_name)
+    root = resolve_medical_data_root(data_path, dataset_name)
+    path = root / 'statistics.json'
+    if not path.is_file():
+        return list(spec['mean']), list(spec['std'])
+
+    import json
+
+    payload = json.loads(path.read_text(encoding='utf-8'))
+    stats = payload.get('statistics', payload)
+    mean = stats.get('mean')
+    std = stats.get('std')
+    if (not isinstance(mean, list) or not isinstance(std, list)
+            or len(mean) != 3 or len(std) != 3
+            or any(float(value) <= 0 for value in std)):
+        raise ValueError(f'无效的 train-only 统计量: {path}')
+    return [float(value) for value in mean], [float(value) for value in std]
+
+
 def get_medmnist_root(data_path):
     """
     返回 PathMNIST 的统一存储目录。
@@ -100,27 +125,46 @@ def resolve_medical_data_root(data_path, dataset_name):
     return (PROJECT_ROOT / 'data' / 'prepared' / folder_name).resolve()
 
 
-def _medical_transform(dataset_name, use_zca=False):
-    """创建所有算法共用的医疗数据变换；ZCA 时跳过普通 Normalize。"""
+def _medical_transform(dataset_name, use_zca=False, skip_normalize=False,
+                       mean=None, std=None):
+    """创建医疗数据变换；可为 train 保留 raw [0, 1] 数据。"""
     spec = get_medical_spec(dataset_name)
+    mean = spec['mean'] if mean is None else mean
+    std = spec['std'] if std is None else std
     resize = transforms.Resize(
         spec['im_size'], interpolation=transforms.InterpolationMode.BICUBIC
     )
     steps = [transforms.ToTensor(), resize]
-    if not use_zca:
-        steps.append(transforms.Normalize(spec['mean'], spec['std']))
+    if not use_zca and not skip_normalize:
+        steps.append(transforms.Normalize(mean, std))
     return transforms.Compose(steps)
 
 
-def load_medical_splits(dataset_name, data_path, use_zca=False):
+def load_medical_splits(dataset_name, data_path, use_zca=False,
+                        train_skip_normalize=False):
     """读取共享的 train/val/test 三个 split。
 
     返回字典而不是某个算法专用的 tuple，算法适配器可以按自己的返回合同
     取用 train、val 和 test；这样不会在每个算法里重新切分数据。
+    ``train_skip_normalize=True`` 仅让 train 保持 raw [0, 1]，
+    val/test 仍使用同一套 train-only 统计量。
     """
     spec = get_medical_spec(dataset_name)
     root = resolve_medical_data_root(data_path, dataset_name)
-    transform = _medical_transform(dataset_name, use_zca=use_zca)
+    mean, std = get_medical_statistics(dataset_name, data_path)
+    train_transform = _medical_transform(
+        dataset_name,
+        use_zca=use_zca,
+        skip_normalize=train_skip_normalize,
+        mean=mean,
+        std=std,
+    )
+    eval_transform = _medical_transform(
+        dataset_name,
+        use_zca=use_zca,
+        mean=mean,
+        std=std,
+    )
 
     if spec['format'] == 'MedMNIST':
         from medmnist import PathMNIST
@@ -129,7 +173,12 @@ def load_medical_splits(dataset_name, data_path, use_zca=False):
         med_root = str(root)
         splits = {
             split: MedMNISTWrapper(
-                PathMNIST(split=split, root=med_root, download=True, transform=transform)
+                PathMNIST(
+                    split=split,
+                    root=med_root,
+                    download=True,
+                    transform=train_transform if split == 'train' else eval_transform,
+                )
             )
             for split in ('train', 'val', 'test')
         }
@@ -147,7 +196,10 @@ def load_medical_splits(dataset_name, data_path, use_zca=False):
         )
 
     return {
-        split: datasets.ImageFolder(root / split, transform=transform)
+        split: datasets.ImageFolder(
+            root / split,
+            transform=train_transform if split == 'train' else eval_transform,
+        )
         for split in ('train', 'val', 'test')
     }
 

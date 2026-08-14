@@ -209,10 +209,17 @@ def download_covid(data_root: Path, overwrite: bool) -> None:
             'Kaggle 下载失败。请检查 API 凭据、网络和数据集访问权限。'
         ) from exc
 
-    archives = sorted(raw_dir.glob('*.zip'), key=lambda path: path.stat().st_mtime)
+    # Do not choose an archive by mtime: stale Kaggle downloads are
+    # indistinguishable from the intended input that way.
+    archives = list(raw_dir.glob('*.zip'))
     if not archives:
         raise FileNotFoundError(f'Kaggle 下载完成但未找到 zip: {raw_dir}')
-    archive = archives[-1]
+    if len(archives) != 1:
+        raise RuntimeError(
+            f'COVID raw directory must contain exactly one explicit zip; '
+            f'found {len(archives)}: {[path.name for path in archives]}'
+        )
+    archive = archives[0]
     safe_extract(archive, source_dir)
     write_download_record(
         raw_dir,
@@ -328,6 +335,79 @@ def collect_class_images(source_dir: Path, dataset: str) -> dict[str, list[Path]
     return {name: sorted(set(files)) for name, files in collected.items()}
 
 
+def rgb_pixel_sha256(path: Path) -> str:
+    """Hash decoded RGB pixels, including dimensions, rather than file bytes."""
+    with Image.open(path) as image:
+        rgb = image.convert('RGB')
+        digest = hashlib.sha256()
+        digest.update(f'{rgb.width}x{rgb.height}:RGB\0'.encode('ascii'))
+        digest.update(rgb.tobytes())
+    return digest.hexdigest()
+
+
+def deduplicate_class_images(
+    class_images: dict[str, list[Path]],
+    source_dir: Path,
+) -> tuple[dict[str, list[Path]], dict]:
+    """Remove same-class duplicates and all cross-class ambiguous groups."""
+    groups: dict[str, list[tuple[str, Path]]] = {}
+    source_counts = {name: len(paths) for name, paths in class_images.items()}
+    for class_name, paths in class_images.items():
+        for path in paths:
+            groups.setdefault(rgb_pixel_sha256(path), []).append((class_name, path))
+
+    retained = {name: [] for name in class_images}
+    duplicate_groups = []
+    ambiguous_groups = []
+    for pixel_hash, entries in sorted(groups.items()):
+        entries = sorted(entries, key=lambda item: (item[0], str(item[1])))
+        classes = sorted({class_name for class_name, _ in entries})
+        serialized = [
+            {
+                'class_name': class_name,
+                'source': str(path.relative_to(source_dir)),
+            }
+            for class_name, path in entries
+        ]
+        if len(classes) > 1:
+            ambiguous_groups.append({
+                'rgb_pixel_sha256': pixel_hash,
+                'classes': classes,
+                'files': serialized,
+            })
+            continue
+
+        canonical_class, canonical_path = entries[0]
+        retained[canonical_class].append(canonical_path)
+        if len(entries) > 1:
+            duplicate_groups.append({
+                'rgb_pixel_sha256': pixel_hash,
+                'class_name': canonical_class,
+                'canonical': str(canonical_path.relative_to(source_dir)),
+                'removed': [item['source'] for item in serialized[1:]],
+            })
+
+    retained = {name: sorted(paths) for name, paths in retained.items()}
+    empty = [name for name, paths in retained.items() if not paths]
+    if empty:
+        raise ValueError(f'Deduplication removed every image from classes: {empty}')
+    retained_counts = {name: len(paths) for name, paths in retained.items()}
+    audit = {
+        'hash_algorithm': 'sha256(decoded RGB dimensions + pixel bytes)',
+        'source_count': sum(source_counts.values()),
+        'source_class_counts': source_counts,
+        'retained_count': sum(retained_counts.values()),
+        'retained_class_counts': retained_counts,
+        'same_class_duplicate_group_count': len(duplicate_groups),
+        'same_class_duplicate_file_count': sum(len(group['removed']) for group in duplicate_groups),
+        'ambiguous_group_count': len(ambiguous_groups),
+        'ambiguous_file_count': sum(len(group['files']) for group in ambiguous_groups),
+        'same_class_duplicate_groups': duplicate_groups,
+        'ambiguous_groups': ambiguous_groups,
+    }
+    return retained, audit
+
+
 def materialize_image(source: Path, target: Path) -> dict:
     """复制图片并统一转为 RGB，记录尺寸和原始相对路径。"""
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -375,6 +455,7 @@ def prepare_imagefolder(
     _, prepared_dir = dataset_dirs(data_root, dataset)
     ensure_empty_or_overwrite(prepared_dir, overwrite)
     class_images = collect_class_images(source_dir, dataset)
+    class_images, deduplication = deduplicate_class_images(class_images, source_dir)
     manifest_files = []
     counts = Counter()
 
@@ -425,6 +506,7 @@ def prepare_imagefolder(
             'val_ratio': val_ratio,
             'classes': list(class_images),
             'counts': dict(counts),
+            'deduplication': deduplication,
             'files': manifest_files,
         },
     )
@@ -444,6 +526,7 @@ def write_manifest(prepared_dir: Path, payload: dict) -> None:
 def validate_imagefolder(prepared_dir: Path, dataset: str) -> None:
     """验证 prepared ImageFolder 的类别、图片模式和三个 split 非空。"""
     expected = COVID_CLASSES if dataset == 'COVID' else KVASIR_CLASSES
+    hashes: dict[str, list[str]] = {}
     for split in ('train', 'val', 'test'):
         for class_name in expected:
             class_dir = prepared_dir / split / class_name
@@ -453,10 +536,20 @@ def validate_imagefolder(prepared_dir: Path, dataset: str) -> None:
             if not files:
                 raise ValueError(f'空类别目录: {class_dir}')
             for image_path in files:
+                pixel_hash = rgb_pixel_sha256(image_path)
+                hashes.setdefault(pixel_hash, []).append(
+                    str(image_path.relative_to(prepared_dir))
+                )
                 with Image.open(image_path) as image:
                     if image.mode != 'RGB':
                         raise ValueError(f'图片不是 RGB: {image_path} ({image.mode})')
     print(f'{dataset} prepared 验证通过: {prepared_dir}')
+    duplicate_groups = [paths for paths in hashes.values() if len(paths) > 1]
+    if duplicate_groups:
+        raise ValueError(
+            f'{dataset} prepared contains {len(duplicate_groups)} duplicate RGB pixel groups; '
+            f'first groups={duplicate_groups[:5]}'
+        )
 
 
 def validate(data_root: Path, dataset: str) -> None:

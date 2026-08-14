@@ -76,6 +76,7 @@ class AverageMeter(object):
 
 class Logger:
     def __init__(self, path):
+        os.makedirs(path, exist_ok=True)
         self.logger = open(os.path.abspath(os.path.join(path, "print.log")), "w")
 
     def __call__(self, string, end="\n", print_=True):

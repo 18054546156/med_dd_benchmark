@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# Submit five baseline-seed and five pixel-space-control runs per dataset.
+set -Eeuo pipefail
+
+ROOT="${BENCHMARK_ROOT:-/project/prj-sis01/xiaoyu_xu/med_dd_project/dd_benchmark}"
+MATH_ROOT="${NCFM_MATH_ROOT:-$ROOT/research/ncfm_mathematical_analysis}"
+TAG="${PHASE1_REPLICATION_TAG:-phase1-rep-$(date +%Y%m%d-%H%M%S)}"
+NCFM_PATHMNIST_RUN_ID="${NCFM_PATHMNIST_RUN_ID:?baseline PathMNIST RUN_ID}"
+NCFM_COVID_RUN_ID="${NCFM_COVID_RUN_ID:?baseline COVID RUN_ID}"
+NCFM_KVASIR_RUN_ID="${NCFM_KVASIR_RUN_ID:?baseline Kvasir RUN_ID}"
+PHASE1_DEPENDENCY="${PHASE1_DEPENDENCY:-}"
+cd "$ROOT"
+mkdir -p "$ROOT/logs"
+mkdir -p "$MATH_ROOT"
+
+declare -a jobs=()
+submit_one() {
+  local dataset="$1" slug="$2" variant="$3" seed="$4" teacher="$5"
+  local dependency_args=()
+  if [[ -n "$PHASE1_DEPENDENCY" ]]; then
+    dependency_args+=(--dependency="$PHASE1_DEPENDENCY")
+  fi
+  jobs+=("$(sbatch --parsable "${dependency_args[@]}" --job-name="NCFM-${variant}-${slug}-s${seed}" \
+    --export="ALL,NCFM_MATH_ROOT=${MATH_ROOT},DATASET=${dataset},VARIANT=${variant},SEED=${seed},RUN_ID=${TAG}-${variant}-${slug}-seed${seed},TEACHER_RUN_ID=${teacher}" \
+    scripts/ncfm_condense_variant.sbatch)")
+}
+
+for item in "PathMNIST pathmnist ${NCFM_PATHMNIST_RUN_ID}" "COVID covid ${NCFM_COVID_RUN_ID}" "Kvasir kvasir ${NCFM_KVASIR_RUN_ID}"; do
+  read -r dataset slug teacher <<< "$item"
+  for seed in 0 1 2 3 4; do
+    submit_one "$dataset" "$slug" baseline_seed "$seed" "$teacher"
+    submit_one "$dataset" "$slug" pixel_mean "$seed" "$teacher"
+  done
+done
+
+dep="afterok:$(IFS=:; echo "${jobs[*]}")"
+BUILD_JOB="$(sbatch --parsable --job-name=ncfm-p1-rep-manifest --dependency="$dep" \
+  --export="ALL,NCFM_MATH_ROOT=${MATH_ROOT},PHASE1_REPLICATION_TAG=${TAG}" \
+  --wrap="cd '$ROOT' && '/home/xiaoyuxu2/.conda/envs/meddd/bin/python' scripts/build_phase1_replication_manifest.py --root '$ROOT' --tag '$TAG'")"
+EVAL_JOB="$(sbatch --parsable --job-name=ncfm-p1-rep-eval --dependency="afterok:${BUILD_JOB}" \
+    --export="ALL,NCFM_MATH_ROOT=${MATH_ROOT},PHASE1_REPLICATION_MANIFEST=${MATH_ROOT}/phase1_replication_manifest.json" \
+  scripts/run_phase1_replication_eval.sbatch)"
+MERGE_JOB="$(sbatch --parsable --job-name=ncfm-p1-rep-merge --dependency="afterok:${EVAL_JOB}" \
+  --wrap="cd '$ROOT' && '/home/xiaoyuxu2/.conda/envs/meddd/bin/python' scripts/merge_phase1_replication_manifest.py --root '$ROOT' --artifact-manifest '$ROOT/research/ncfm_medical_analysis/formal_artifact_manifest.json' --replication-manifest '$MATH_ROOT/phase1_replication_manifest.json'")"
+
+printf 'phase1_replication_tag=%s\ncondense_jobs=%s\nbuild=%s\nevaluation=%s\nmerge=%s\n' "$TAG" "${jobs[*]}" "$BUILD_JOB" "$EVAL_JOB" "$MERGE_JOB"

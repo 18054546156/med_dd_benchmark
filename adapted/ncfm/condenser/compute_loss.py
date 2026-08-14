@@ -31,18 +31,27 @@ def compute_match_loss(
         n = img.shape[0]
 
         loss = inner_loss_fn(img_aug[:n], img_aug[n:], model_interval,sampling_net,args)
+        if not torch.isfinite(loss):
+            raise FloatingPointError(
+                f"Non-finite NCFM match loss for class={c}: {loss.detach().item()}"
+            )
         loss_total += loss.item()
         timing_tracker.record("loss")
 
         optim_img.zero_grad()
         if optim_sampling_net is not None:
             optim_sampling_net.zero_grad()
-            loss.backward(retain_graph=True)
+            loss.backward()
+            # Synthetic images minimize the discrepancy; the learned
+            # frequency proposal maximizes the same objective. Negating only
+            # proposal gradients implements simultaneous descent/ascent from
+            # one DDP-synchronized backward pass.
+            for group in optim_sampling_net.param_groups:
+                for parameter in group["params"]:
+                    if parameter.grad is not None:
+                        parameter.grad.mul_(-1)
             optim_img.step()
-            optim_img.zero_grad()
-            (-loss).backward()
             optim_sampling_net.step()
-            optim_sampling_net.zero_grad()
         else:
             loss.backward()
             optim_img.step()

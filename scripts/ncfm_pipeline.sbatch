@@ -17,9 +17,11 @@
 set -Eeuo pipefail
 
 ROOT="${BENCHMARK_ROOT:-/project/prj-sis01/xiaoyu_xu/med_dd_project/dd_benchmark}"
+export NCFM_MATH_ROOT="${NCFM_MATH_ROOT:-$ROOT/research/ncfm_mathematical_analysis}"
 DATASET="${DATASET:?必须设置 DATASET，例如 DATASET=PathMNIST}"
 PY="${PYTHON:-/home/xiaoyuxu2/.conda/envs/meddd/bin/python}"
 NPROC="${NPROC_PER_NODE:-8}"
+RUN_ID="${RUN_ID:?必须设置唯一 RUN_ID，例如 RUN_ID=pathmnist-formal-s0-20260814-1}"
 if [[ -n "${GPU_IDS:-}" ]]; then
   GPU_IDS="$GPU_IDS"
 else
@@ -34,16 +36,32 @@ case "$DATASET" in
 esac
 
 CONFIG="$ROOT/configs/ncfm/$SLUG/ipc10_full.yaml"
-PRETRAIN_DIR="$ROOT/pretrained_models/$SLUG/$SLUG"
-RESULT_ROOT="$ROOT/results/ncfm/$SLUG"
+# init_script.py expands the YAML value pretrained_models/ncfm to
+# pretrained_models/ncfm/<dataset>; keep the validation path identical.
+PRETRAIN_DIR="$ROOT/pretrained_models/ncfm/$SLUG/$RUN_ID"
+RESULT_ROOT="$ROOT/results/ncfm"
+CONDENSE_ROOT="$RESULT_ROOT/condense/$SLUG/ipc10"
 
-mkdir -p "$ROOT/logs" "$ROOT/pretrained_models" "$ROOT/results"
+mkdir -p "$ROOT/logs" "$ROOT/pretrained_models" "$ROOT/results" "$PRETRAIN_DIR"
 cd "$ROOT"
+
+# Batch shells do not inherit the interactive CUDA module state.
+if type module >/dev/null 2>&1; then
+  module purge
+  module load anaconda3/3.12
+  module load cuda/12.6
+fi
 
 export PYTHONUNBUFFERED=1
 export OMP_NUM_THREADS="${OMP_NUM_THREADS:-1}"
 export TORCH_NCCL_ASYNC_ERROR_HANDLING=1
 export PYTHONPATH="$ROOT/adapted/ncfm:$ROOT/utils${PYTHONPATH:+:$PYTHONPATH}"
+export NCFM_RUN_ID="$RUN_ID"
+export NCFM_PRETRAIN_RUN_DIR="$PRETRAIN_DIR"
+export NCFM_EXPERIMENT_VARIANT="baseline"
+export NCFM_OBJECTIVE="cf"
+export NCFM_FREQUENCY_SAMPLER="mc"
+export NCFM_SAMPLING_NET="false"
 
 test -x "$PY"
 test -f "$CONFIG"
@@ -90,10 +108,14 @@ run_ncfm condense \
   --gpu "$GPU_IDS" \
   --ipc 10
 
-# Condense 的 evaluation 入口要求具体的 data_*.pt 文件，而不是目录。
-SYNTHETIC_PATH=$(find "$RESULT_ROOT" -type f -path '*/distilled_data/data_*.pt' -printf '%T@ %p\n' \
-  | sort -n | tail -1 | cut -d' ' -f2-)
-test -n "$SYNTHETIC_PATH"
+# 只允许读取本次 RUN_ID 对应的 artifact；禁止按 mtime 猜旧实验。
+mapfile -t SYNTHETIC_MATCHES < <(
+  find "$CONDENSE_ROOT" -type f \
+    -path "*_${RUN_ID}/distilled_data/data_20000.pt" \
+    -print | sort
+)
+test "${#SYNTHETIC_MATCHES[@]}" -eq 1
+SYNTHETIC_PATH="${SYNTHETIC_MATCHES[0]}"
 test -f "$SYNTHETIC_PATH"
 echo "synthetic_data=$SYNTHETIC_PATH"
 
@@ -110,3 +132,14 @@ echo "===== NCFM pipeline complete date=$(date -Is) ====="
 echo "dataset=$DATASET"
 echo "pretrained_dir=$PRETRAIN_DIR"
 echo "synthetic_data=$SYNTHETIC_PATH"
+
+# Register immutable provenance for the formal benchmark artifact gate.
+"$PY" "$ROOT/scripts/write_ncfm_run_manifest.py" \
+  --root "$ROOT" \
+  --dataset "$DATASET" \
+  --run-id "$RUN_ID" \
+  --config "$CONFIG" \
+  --pretrain-dir "$PRETRAIN_DIR" \
+  --synthetic "$SYNTHETIC_PATH" \
+  --stdout "$ROOT/logs/ncfm-pipeline-${SLURM_JOB_ID}.out" \
+  --stderr "$ROOT/logs/ncfm-pipeline-${SLURM_JOB_ID}.err"

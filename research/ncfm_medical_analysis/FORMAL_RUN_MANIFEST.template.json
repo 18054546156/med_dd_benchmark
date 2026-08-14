@@ -1,0 +1,63 @@
+{
+  "protocol": "ncfm-medical-phase1-real-v2",
+  "created_by": "fill only with verified HPC paths",
+  "datasets": {
+    "PathMNIST": {
+      "statistics": "data/prepared/PathMNIST/statistics.json",
+      "teacher_dir": "pretrained_models/ncfm/pathmnist",
+      "synthetic": "results/ncfm/pathmnist/condense/<formal-run>/distilled_data/data_20000.pt"
+    },
+    "COVID": {
+      "statistics": "data/prepared/COVID/statistics.json",
+      "teacher_dir": "pretrained_models/ncfm/covid",
+      "synthetic": "results/ncfm/covid/condense/<formal-run>/distilled_data/data_20000.pt"
+    },
+    "Kvasir": {
+      "statistics": "data/prepared/Kvasir/statistics.json",
+      "teacher_dir": "pretrained_models/ncfm/kvasir",
+      "synthetic": "results/ncfm/kvasir/condense/<formal-run>/distilled_data/data_20000.pt"
+    }
+  },
+  "controlled_evaluation": {
+    "purpose": "same downstream protocol for NCFM and HoP synthetic-data comparison",
+    "optimizer": "SGD",
+    "lr": 0.01,
+    "momentum": 0.9,
+    "weight_decay": 0.0005,
+    "epochs": 1000,
+    "batch_size": 256,
+    "augmentation": "none",
+    "test_split": "test",
+    "repeats": 5,
+    "architectures": ["ConvNet", "ResNet18"]
+  },
+  "method_reproduction": {
+    "NCFM": {
+      "pretrain_augmentation": "DSA + CutMix",
+      "teacher_count": 20,
+      "condense_objective": "CF loss",
+      "num_freqs": 4096,
+      "sampling_net": false,
+      "iterations": 20000,
+      "ipc": 10
+    },
+    "HoP": {
+      "buffer_and_distill_augmentation": "DSA only",
+      "configuration_source": "official/adapted HoP config"
+    }
+  },
+  "comparison_rules": {
+    "keep_method_internal_configs": true,
+    "same_downstream_evaluator": true,
+    "same_split_and_train_only_statistics": true,
+    "no_automatic_newest_artifact_selection": true,
+    "no_toy_or_example_accuracy": true
+  },
+  "pairs_for_e4_1": [],
+  "evidence_policy": {
+    "no_toy_fallback": true,
+    "no_newest_file_selection": true,
+    "minimum_replicates": 5,
+    "formal_claim_requires_real_pretrain_condense_eval": true
+  }
+}

@@ -33,6 +33,7 @@ if _utils_path not in sys.path:
     sys.path.insert(0, _utils_path)
 from medical_dataset_utils import (
     MedMNISTWrapper,
+    get_medical_statistics,
     get_medmnist_root,
     load_medical_splits,
 )
@@ -92,8 +93,17 @@ def _load_medical_dataset(dataset, data_dir, size, evaluation_split="val"):
         "kvasir": "Kvasir",
     }[dataset]
     spec = MEDICAL_DATASET_SPECS[spec_name]
+    # Pretrain/condense 的 DSA 在 NCFM 内部负责使用同一组 train-only
+    # 统计量；正式运行从 prepared/statistics.json 读取，而非写死 ImageNet 值。
+    mean, std = get_medical_statistics(spec_name, data_dir)
+    MEANS[dataset] = mean
+    STDS[dataset] = std
     # 统一工具负责固定尺寸、归一化、标签标量化和 prepared 路径解析。
-    splits = load_medical_splits(spec_name, data_dir)
+    splits = load_medical_splits(
+        spec_name,
+        data_dir,
+        train_skip_normalize=True,
+    )
     train_dataset = splits["train"]
     if evaluation_split not in {"val", "test"}:
         raise ValueError(f"不支持的医疗评估 split: {evaluation_split}")

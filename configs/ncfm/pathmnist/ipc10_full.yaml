@@ -46,8 +46,8 @@ optimization:
   mom_img: 0.5
   lr_sampling_net: 0.001
 save_path:
-  save_dir: results/ncfm/pathmnist
-  pretrain_dir: pretrained_models/pathmnist
+  save_dir: results/ncfm
+  pretrain_dir: pretrained_models/ncfm
 condense:
   ipc: 10
   num_premodel: 20
