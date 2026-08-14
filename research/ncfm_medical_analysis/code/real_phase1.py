@@ -667,6 +667,7 @@ def run_overfitting(config: RunConfig, root: Path, run: Path) -> dict:
         train_per_class.append(train_classes)
         heldout_per_class.append(heldout_classes)
     train_stats, heldout_stats = percentile_ci(train_values, config.seed), percentile_ci(heldout_values, config.seed)
+    paired_gaps = [heldout - train for train, heldout in zip(train_values, heldout_values)]
     result = {
         "status": "diagnostic_proxy",
         "experiment": config.experiment,
@@ -678,6 +679,7 @@ def run_overfitting(config: RunConfig, root: Path, run: Path) -> dict:
         "train_bank_per_class": summarize_per_class(train_per_class, config.seed),
         "heldout_bank_per_class": summarize_per_class(heldout_per_class, config.seed),
         "heldout_minus_train": float(heldout_stats["mean"] - train_stats["mean"]),
+        "paired_heldout_minus_train": percentile_ci(paired_gaps, config.seed),
     }
     json_dump(run / "results.json", result)
     return result

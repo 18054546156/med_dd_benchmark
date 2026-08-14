@@ -188,7 +188,13 @@ def defect_adjudication(rows: list[dict]) -> dict:
     e11_effect = []
     for payload in e11:
         sweep = payload.get("num_freqs_sweep", {})
-        means = [item.get("mean") for item in sweep.values() if isinstance(item, dict) and item.get("mean") is not None]
+        means = []
+        for item in sweep.values():
+            if not isinstance(item, dict):
+                continue
+            aggregate = item.get("aggregate", item)
+            if isinstance(aggregate, dict) and aggregate.get("mean") is not None:
+                means.append(aggregate["mean"])
         if means and min(means) > 0:
             e11_effect.append(max(means) / min(means))
     decisions["e1.1"] = {
@@ -217,16 +223,16 @@ def defect_adjudication(rows: list[dict]) -> dict:
         result = row.get("result")
         if not isinstance(result, dict) or result.get("status") != "diagnostic_proxy":
             continue
-        train = result.get("train_bank", {})
-        heldout = result.get("heldout_bank", {})
-        if train.get("mean") is None or heldout.get("mean") is None:
+        paired = result.get("paired_heldout_minus_train", {})
+        if paired.get("mean") is None:
             continue
-        train_ci = train.get("ci95", [None, None])
-        heldout_ci = heldout.get("ci95", [None, None])
+        paired_ci = paired.get("ci95", [None, None])
         e21_effect.append({
-            "gap": float(heldout["mean"] - train["mean"]),
-            "conservative_gap_lower": (float(heldout_ci[0] - train_ci[1])
-                                        if heldout_ci[0] is not None and train_ci[1] is not None else None),
+            "gap": float(paired["mean"]),
+            "paired_gap_ci95": paired_ci,
+            "conservative_gap_lower": (
+                float(paired_ci[0]) if paired_ci[0] is not None else None
+            ),
         })
     # The released NCFM implementation does not persist its training bank.
     # This is a useful stability diagnostic, but it cannot confirm a defect in

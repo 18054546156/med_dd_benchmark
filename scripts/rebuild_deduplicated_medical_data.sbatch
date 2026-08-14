@@ -49,41 +49,9 @@ for item in "COVID:$COVID_SOURCE" "Kvasir:$KVASIR_SOURCE"; do
     "$MATH_ROOT/data_audit/$DATA_TAG/${dataset}_statistics.json"
 done
 
-"$PY" - "$CANDIDATE_ROOT" "$MATH_ROOT/data_audit/$DATA_TAG/ready.json" "$SEED" <<'PY'
-import hashlib
-import json
-import sys
-from datetime import datetime, timezone
-from pathlib import Path
-
-root, output, seed = Path(sys.argv[1]), Path(sys.argv[2]), int(sys.argv[3])
-datasets = {}
-for dataset in ("COVID", "Kvasir"):
-    prepared = root / "prepared" / dataset
-    manifest = prepared / "manifest.json"
-    statistics = prepared / "statistics.json"
-    stats = json.loads(statistics.read_text(encoding="utf-8"))
-    if stats.get("status") != "complete":
-        raise SystemExit(f"{dataset}: statistics status is not complete")
-    if stats["statistics"].get("duplicate_file_count") != 0:
-        raise SystemExit(f"{dataset}: duplicate images remain")
-    datasets[dataset] = {
-        "prepared_root": str(prepared),
-        "manifest_sha256": hashlib.sha256(manifest.read_bytes()).hexdigest(),
-        "statistics_sha256": hashlib.sha256(statistics.read_bytes()).hexdigest(),
-        "split_counts": stats["statistics"]["split_counts"],
-        "mean": stats["statistics"]["mean"],
-        "std": stats["statistics"]["std"],
-    }
-payload = {
-    "status": "ready",
-    "created_at": datetime.now(timezone.utc).isoformat(),
-    "split_seed": seed,
-    "candidate_root": str(root),
-    "datasets": datasets,
-}
-output.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-print(json.dumps(payload, indent=2))
-PY
+"$PY" scripts/refresh_data_candidate_audit.py \
+  --candidate-root "$CANDIDATE_ROOT" \
+  --output "$MATH_ROOT/data_audit/$DATA_TAG/ready.json" \
+  --split-seed "$SEED"
 
 echo "status=ready candidate_root=$CANDIDATE_ROOT"
