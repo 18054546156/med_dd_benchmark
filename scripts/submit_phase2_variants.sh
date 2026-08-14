@@ -23,12 +23,19 @@ IFS=$' \t\n'
 
 submit_variant() {
   local dataset="$1" slug="$2" variant="$3" seed="$4" teacher_var="$5"
+  local nproc
+  case "$dataset" in
+    PathMNIST) nproc=3 ;;
+    COVID) nproc=4 ;;
+    Kvasir) nproc=8 ;;
+  esac
   local dependency_args=()
   if [[ -n "$BASELINE_EVAL_DEPENDENCY" ]]; then
     dependency_args+=(--dependency="$BASELINE_EVAL_DEPENDENCY")
   fi
   sbatch --parsable "${dependency_args[@]}" --job-name="NCFM-${variant}-${slug}-s${seed}" \
-    --export="ALL,NCFM_MATH_ROOT=${MATH_ROOT},DATASET=${dataset},VARIANT=${variant},SEED=${seed},RUN_ID=${PHASE2_TAG}-${variant}-${slug}-seed${seed},TEACHER_RUN_ID=${!5}" \
+    --gres="gpu:${nproc}" \
+    --export="ALL,NCFM_MATH_ROOT=${MATH_ROOT},DATASET=${dataset},VARIANT=${variant},SEED=${seed},RUN_ID=${PHASE2_TAG}-${variant}-${slug}-seed${seed},TEACHER_RUN_ID=${!5},NPROC_PER_NODE=${nproc}" \
     scripts/ncfm_condense_variant.sbatch
 }
 

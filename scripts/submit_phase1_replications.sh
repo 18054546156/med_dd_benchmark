@@ -16,12 +16,19 @@ mkdir -p "$MATH_ROOT"
 declare -a jobs=()
 submit_one() {
   local dataset="$1" slug="$2" variant="$3" seed="$4" teacher="$5"
+  local nproc
+  case "$dataset" in
+    PathMNIST) nproc=3 ;;
+    COVID) nproc=4 ;;
+    Kvasir) nproc=8 ;;
+  esac
   local dependency_args=()
   if [[ -n "$PHASE1_DEPENDENCY" ]]; then
     dependency_args+=(--dependency="$PHASE1_DEPENDENCY")
   fi
   jobs+=("$(sbatch --parsable "${dependency_args[@]}" --job-name="NCFM-${variant}-${slug}-s${seed}" \
-    --export="ALL,NCFM_MATH_ROOT=${MATH_ROOT},DATASET=${dataset},VARIANT=${variant},SEED=${seed},RUN_ID=${TAG}-${variant}-${slug}-seed${seed},TEACHER_RUN_ID=${teacher}" \
+    --gres="gpu:${nproc}" \
+    --export="ALL,NCFM_MATH_ROOT=${MATH_ROOT},DATASET=${dataset},VARIANT=${variant},SEED=${seed},RUN_ID=${TAG}-${variant}-${slug}-seed${seed},TEACHER_RUN_ID=${teacher},NPROC_PER_NODE=${nproc}" \
     scripts/ncfm_condense_variant.sbatch)")
 }
 

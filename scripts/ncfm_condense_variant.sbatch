@@ -27,11 +27,19 @@ PY="${PYTHON:-/home/xiaoyuxu2/.conda/envs/meddd/bin/python}"
 NPROC="${NPROC_PER_NODE:-8}"
 
 case "$DATASET" in
-  PathMNIST) SLUG=pathmnist ;;
-  COVID) SLUG=covid ;;
-  Kvasir) SLUG=kvasir ;;
+  PathMNIST) SLUG=pathmnist; NCLASS=9 ;;
+  COVID) SLUG=covid; NCLASS=4 ;;
+  Kvasir) SLUG=kvasir; NCLASS=8 ;;
   *) echo "unsupported DATASET=$DATASET" >&2; exit 2 ;;
 esac
+if (( NPROC > NCLASS )); then
+  echo "NPROC_PER_NODE=$NPROC exceeds NCLASS=$NCLASS and would leave ranks empty" >&2
+  exit 2
+fi
+if [[ "$VARIANT" == learned_frequency ]] && (( NCLASS % NPROC != 0 )); then
+  echo "learned_frequency requires equal class counts per DDP rank: NCLASS=$NCLASS NPROC=$NPROC" >&2
+  exit 2
+fi
 case "$VARIANT" in
   qmc|importance|learned_frequency|baseline_seed|pixel_mean) ;;
   *) echo "unsupported VARIANT=$VARIANT" >&2; exit 2 ;;

@@ -15,7 +15,6 @@ set -Eeuo pipefail
 ROOT="${BENCHMARK_ROOT:-/project/prj-sis01/xiaoyu_xu/med_dd_project/dd_benchmark}"
 export NCFM_MATH_ROOT="${NCFM_MATH_ROOT:-$ROOT/research/ncfm_mathematical_analysis}"
 RUN_TAG="${RUN_TAG:-formal-$(date +%Y%m%d-%H%M%S)}"
-NPROC_PER_NODE="${NPROC_PER_NODE:-8}"
 
 cd "$ROOT"
 mkdir -p "$ROOT/logs"
@@ -29,10 +28,17 @@ PRECHECK_DEP="afterok:${STATS_JOB}:${CONTRACT_JOB}:${RUNTIME_JOB}"
 
 submit_ncfm() {
   local dataset="$1" slug="$2" dependency="$3"
+  local nproc
+  case "$dataset" in
+    PathMNIST) nproc=3 ;;
+    COVID) nproc=4 ;;
+    Kvasir) nproc=8 ;;
+  esac
   sbatch --parsable \
     --job-name="NCFM-${slug}" \
+    --gres="gpu:${nproc}" \
     --dependency="$dependency" \
-    --export="ALL,NCFM_MATH_ROOT=${NCFM_MATH_ROOT},DATASET=${dataset},RUN_ID=${RUN_TAG}-ncfm-${slug},NPROC_PER_NODE=${NPROC_PER_NODE}" \
+    --export="ALL,NCFM_MATH_ROOT=${NCFM_MATH_ROOT},DATASET=${dataset},RUN_ID=${RUN_TAG}-ncfm-${slug},NPROC_PER_NODE=${nproc}" \
     scripts/ncfm_pipeline.sbatch
 }
 

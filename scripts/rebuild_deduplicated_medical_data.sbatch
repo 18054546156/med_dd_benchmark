@@ -5,8 +5,8 @@
 #SBATCH --qos=qos-normal
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=8
-#SBATCH --mem=32G
+#SBATCH --cpus-per-task=2
+#SBATCH --mem=4G
 #SBATCH --time=12:00:00
 #SBATCH --output=logs/medical-dedup-%j.out
 #SBATCH --error=logs/medical-dedup-%j.err
@@ -20,7 +20,7 @@ MATH_ROOT="${NCFM_MATH_ROOT:-$PROJECT_ROOT/research/ncfm_mathematical_analysis}"
 PY="${PYTHON:-/home/xiaoyuxu2/.conda/envs/meddd/bin/python}"
 DATA_TAG="${DATA_TAG:-deduplicated-20260814}"
 CANDIDATE_ROOT="${CANDIDATE_ROOT:-$PROJECT_ROOT/data_candidates/$DATA_TAG}"
-COVID_SOURCE="${COVID_SOURCE:-/mnt/prj01/hgrp-1502-5TB/xiaoyu_xu/med_dd_project/dd_benchmark/data/raw/COVID/source/COVID-19_Radiography_Dataset}"
+COVID_SOURCE="${COVID_SOURCE:-$PROJECT_ROOT/../dd_benchmark_archive_20260813/data/raw/COVID/source/COVID-19_Radiography_Dataset}"
 KVASIR_SOURCE="${KVASIR_SOURCE:-/mnt/prj01/hgrp-1502-5TB/xiaoyu_xu/med_dd_project/datasets/kvasirv2}"
 SEED="${SPLIT_SEED:-20260810}"
 
