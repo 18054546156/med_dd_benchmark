@@ -24,6 +24,7 @@ from medical_dataset_utils import (
     MedMNISTWrapper,
     MEDICAL_DATASET_SPECS,
     get_medmnist_root,
+    get_medical_statistics,
     load_medical_splits,
     resolve_medical_data_root,
 )
@@ -38,8 +39,7 @@ def get_dataset(dataset, data_path):
         channel = spec['channel']
         im_size = spec['im_size']
         num_classes = spec['num_classes']
-        mean = spec['mean']
-        std = spec['std']
+        mean, std = get_medical_statistics(medical_name, data_path)
         dst_train = splits['train']
         dst_test = splits['test']
         class_names = getattr(dst_train, 'classes', [str(c) for c in range(num_classes)])

@@ -62,6 +62,22 @@ class SlurmContractTests(unittest.TestCase):
         self.assertNotIn('print(json.dumps({"status": "complete", "manifest"', writer)
         self.assertNotIn('print(json.dumps({"status": "complete", "manifest"', hop_writer)
 
+    def test_all_medical_adapters_return_authoritative_statistics(self):
+        adapters = (
+            "adapted/ncfm/utils/utils.py",
+            "adapted/hop_tm/utils/utils_baseline.py",
+            "adapted/hop_tm/utils/utils_gsam.py",
+            "adapted/dc_dsa_dm/utils.py",
+            "adapted/mtt/utils.py",
+            "adapted/datadam/utils.py",
+            "adapted/cafe/utils.py",
+        )
+        for adapter in adapters:
+            source = read(adapter)
+            self.assertIn("get_medical_statistics", source, adapter)
+            self.assertNotIn("mean = spec['mean']", source, adapter)
+            self.assertNotIn("std = spec['std']", source, adapter)
+
 
 if __name__ == "__main__":
     unittest.main()
