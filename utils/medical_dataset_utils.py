@@ -134,7 +134,10 @@ def _medical_transform(dataset_name, use_zca=False, skip_normalize=False,
     resize = transforms.Resize(
         spec['im_size'], interpolation=transforms.InterpolationMode.BICUBIC
     )
-    steps = [transforms.ToTensor(), resize]
+    # Resize the PIL image before conversion. Bicubic interpolation on a
+    # float tensor can overshoot outside [0, 1], which violates NCFM's raw
+    # train-data contract and makes statistics disagree with the loader.
+    steps = [resize, transforms.ToTensor()]
     if not use_zca and not skip_normalize:
         steps.append(transforms.Normalize(mean, std))
     return transforms.Compose(steps)

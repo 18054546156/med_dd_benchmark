@@ -58,7 +58,10 @@ def imagefolder(root: Path, size: tuple[int, int]) -> dict:
                 with Image.open(path) as image:
                     modes[image.mode] += 1
                     sizes[f"{image.width}x{image.height}"] += 1
-                    array = np.asarray(image.convert("RGB").resize(size), dtype=np.float64) / 255.0
+                    array = np.asarray(
+                        image.convert("RGB").resize(size, Image.Resampling.BICUBIC),
+                        dtype=np.float64,
+                    ) / 255.0
                 if split == "train":
                     flat = array.reshape(-1, 3)
                     total += flat.sum(axis=0)
@@ -100,7 +103,13 @@ def pathmnist(root: Path, size: tuple[int, int]) -> dict:
                 continue
             for start in range(0, len(images), 512):
                 batch = images[start:start + 512]
-                resized = np.stack([np.asarray(Image.fromarray(item).resize(size), dtype=np.float64) / 255.0 for item in batch])
+                resized = np.stack([
+                    np.asarray(
+                        Image.fromarray(item).resize(size, Image.Resampling.BICUBIC),
+                        dtype=np.float64,
+                    ) / 255.0
+                    for item in batch
+                ])
                 flat = resized.reshape(-1, 3)
                 total += flat.sum(axis=0)
                 squares += np.square(flat).sum(axis=0)
