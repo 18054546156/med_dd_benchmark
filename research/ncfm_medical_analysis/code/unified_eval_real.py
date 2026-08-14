@@ -95,7 +95,13 @@ def read_statistics(root: Path, dataset: str) -> tuple[torch.Tensor, torch.Tenso
     if not path.is_file():
         raise FileNotFoundError(f"Missing authoritative statistics: {path}")
     payload = json.loads(path.read_text(encoding="utf-8"))
+    if payload.get("status", "complete") != "complete":
+        raise RuntimeError(
+            f"Dataset statistics audit did not pass: {path}; status={payload.get('status')}"
+        )
     stats = payload["statistics"]
+    if int(stats.get("duplicate_file_count", 0)):
+        raise RuntimeError(f"Dataset contains duplicate RGB pixels: {path}")
     mean = torch.tensor(stats["mean"], dtype=torch.float32).view(1, 3, 1, 1)
     std = torch.tensor(stats["std"], dtype=torch.float32).view(1, 3, 1, 1)
     return mean, std, {"path": str(path), "sha256": sha256(path), "mean": stats["mean"], "std": stats["std"]}
