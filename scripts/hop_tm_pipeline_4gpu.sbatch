@@ -38,18 +38,21 @@ case "$DATASET" in
     HOP_DATASET="PathMNIST"
     MODEL="ConvNet"
     LR_TEACHER="0.01"
+    CONFIG_LR_IMG="10"
     ;;
   COVID)
     SLUG="covid"
     HOP_DATASET="COVID"
     MODEL="ConvNetD5"
     LR_TEACHER="0.001"
+    CONFIG_LR_IMG="100"
     ;;
   Kvasir)
     SLUG="kvasir"
     HOP_DATASET="Kvasir"
     MODEL="ConvNetD5"
     LR_TEACHER="0.001"
+    CONFIG_LR_IMG="100"
     ;;
   *)
     echo "不支持的数据集：$DATASET" >&2
@@ -245,6 +248,97 @@ PY
 echo "===== stage=buffer done $(date -Is) ====="
 find "$FINAL_BUFFER_DIR" -maxdepth 1 -type f -name 'replay_buffer_*.pt' -printf '%f %s bytes\n' | sort -V
 
+STABILITY_DIR="$NCFM_MATH_ROOT/hop_stability/$RUN_ID"
+LR_SELECTION_MANIFEST="$STABILITY_DIR/selection.json"
+mkdir -p "$STABILITY_DIR"
+SELECTED_LR_IMG="$CONFIG_LR_IMG"
+LR_SELECTION_MODE="config_fixed"
+STABILITY_ITERATIONS=200
+ATTEMPTS_TSV="$STABILITY_DIR/attempts.tsv"
+: > "$ATTEMPTS_TSV"
+
+# COVID's official lr_img=100 has produced non-finite medical runs, and
+# Kvasir inherits that value as a migration rather than an author config.
+# Screen candidates from largest to smallest using finite optimization only;
+# no validation/test accuracy participates in selection.
+if [[ "$DATASET" == COVID || "$DATASET" == Kvasir ]]; then
+  LR_SELECTION_MODE="largest_finite_short_run"
+  SELECTED_LR_IMG=""
+  for candidate in 100 10 1 0.1; do
+    candidate_dir="$STABILITY_DIR/lr_${candidate}"
+    candidate_stdout="$STABILITY_DIR/lr_${candidate}.out"
+    candidate_stderr="$STABILITY_DIR/lr_${candidate}.err"
+    mkdir -p "$candidate_dir"
+    echo "===== stage=lr_stability lr_img=$candidate start=$(date -Is) ====="
+    if "$PY" "$DISTILL_SCRIPT" \
+      --cfg "$CONFIG" \
+      --data_path "$ROOT/data/prepared" \
+      --buffer_path "$BUFFER_ROOT" \
+      --save_path "$candidate_dir" \
+      --lr_img "$candidate" \
+      --Iteration "$STABILITY_ITERATIONS" \
+      --num_eval 1 >"$candidate_stdout" 2>"$candidate_stderr"; then
+      printf '%s\tfinite_complete\t0\t%s\t%s\n' \
+        "$candidate" "$candidate_stdout" "$candidate_stderr" >> "$ATTEMPTS_TSV"
+      SELECTED_LR_IMG="$candidate"
+      echo "===== stage=lr_stability selected lr_img=$candidate ====="
+      break
+    else
+      exit_code=$?
+      printf '%s\tnonfinite_or_failed\t%s\t%s\t%s\n' \
+        "$candidate" "$exit_code" "$candidate_stdout" "$candidate_stderr" >> "$ATTEMPTS_TSV"
+      echo "===== stage=lr_stability rejected lr_img=$candidate exit_code=$exit_code ====="
+    fi
+  done
+  if [[ -z "$SELECTED_LR_IMG" ]]; then
+    echo "No finite HoP lr_img candidate for $DATASET" >&2
+    exit 5
+  fi
+else
+  fixed_stdout="$STABILITY_DIR/config_fixed.out"
+  fixed_stderr="$STABILITY_DIR/config_fixed.err"
+  printf 'dataset=%s configured_lr_img=%s selection=config_fixed\n' \
+    "$DATASET" "$SELECTED_LR_IMG" > "$fixed_stdout"
+  : > "$fixed_stderr"
+  printf '%s\tconfig_fixed\t0\t%s\t%s\n' \
+    "$SELECTED_LR_IMG" "$fixed_stdout" "$fixed_stderr" >> "$ATTEMPTS_TSV"
+fi
+
+"$PY" - "$LR_SELECTION_MANIFEST" "$DATASET" "$CONFIG_LR_IMG" \
+  "$SELECTED_LR_IMG" "$LR_SELECTION_MODE" "$STABILITY_ITERATIONS" "$ATTEMPTS_TSV" <<'PY'
+import hashlib
+import json
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+output, dataset, configured, selected, mode, iterations, attempts_path = sys.argv[1:]
+attempts = []
+for line in Path(attempts_path).read_text(encoding="utf-8").splitlines():
+    lr_img, status, exit_code, stdout, stderr = line.split("\t")
+    records = {}
+    for key, value in (("stdout", stdout), ("stderr", stderr)):
+        path = Path(value)
+        digest = hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else None
+        records[key] = {"path": str(path), "sha256": digest}
+    attempts.append({
+        "lr_img": float(lr_img), "status": status, "exit_code": int(exit_code), **records,
+    })
+payload = {
+    "status": "complete",
+    "created_at": datetime.now(timezone.utc).isoformat(),
+    "dataset": dataset,
+    "selection_rule": mode,
+    "candidate_order": [100.0, 10.0, 1.0, 0.1] if mode == "largest_finite_short_run" else [float(configured)],
+    "configured_lr_img": float(configured),
+    "selected_lr_img": float(selected),
+    "short_run_iterations": int(iterations) if mode == "largest_finite_short_run" else 0,
+    "uses_validation_or_test_accuracy": False,
+    "attempts": attempts,
+}
+Path(output).write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+PY
+
 echo "===== stage=distill start $(date -Is) ====="
 # HoP-TM distill 入口没有 DDP；保持作者的单 GPU high-order trajectory matching。
 "$PY" "$DISTILL_SCRIPT" \
@@ -252,6 +346,7 @@ echo "===== stage=distill start $(date -Is) ====="
   --data_path "$ROOT/data/prepared" \
   --buffer_path "$BUFFER_ROOT" \
   --save_path "$RESULT_DIR" \
+  --lr_img "$SELECTED_LR_IMG" \
   --num_eval 1 \
   --Iteration 10000
 echo "===== stage=distill done $(date -Is) ====="
@@ -325,6 +420,9 @@ echo "run_id=$RUN_ID"
 echo "final_buffer_dir=$FINAL_BUFFER_DIR"
 echo "synthetic_dir=$SYN_DIR"
 echo "synthetic_data=$SYNTHETIC_PATH"
+echo "selected_lr_img=$SELECTED_LR_IMG"
+echo "lr_selection_manifest=$LR_SELECTION_MANIFEST"
+echo "run_manifest=$NCFM_MATH_ROOT/runs/hop_tm/${DATASET,,}/$RUN_ID/run_manifest.json"
 
 "$PY" "$ROOT/scripts/write_hop_run_manifest.py" \
   --root "$ROOT" \
@@ -333,5 +431,7 @@ echo "synthetic_data=$SYNTHETIC_PATH"
   --config "$CONFIG" \
   --buffer-dir "$FINAL_BUFFER_DIR" \
   --synthetic "$SYNTHETIC_PATH" \
+  --lr-img "$SELECTED_LR_IMG" \
+  --lr-selection-manifest "$LR_SELECTION_MANIFEST" \
   --stdout "$ROOT/logs/hop-tm-4gpu-${SLURM_JOB_NAME}-${SLURM_JOB_ID}.out" \
   --stderr "$ROOT/logs/hop-tm-4gpu-${SLURM_JOB_NAME}-${SLURM_JOB_ID}.err"

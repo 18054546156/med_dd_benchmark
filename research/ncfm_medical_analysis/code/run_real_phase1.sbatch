@@ -10,7 +10,9 @@
 #SBATCH --gres=gpu:1
 #SBATCH --mem=32G
 #SBATCH --time=24:00:00
-#SBATCH --array=0-23
+# Three Slurm tasks each execute eight logical experiments sequentially.  This
+# keeps the workflow below qos-high-gpu MaxSubmitJobsPerUser=15.
+#SBATCH --array=0-2
 #SBATCH --output=logs/ncfm-real-phase1_%A_%a.out
 #SBATCH --error=logs/ncfm-real-phase1_%A_%a.err
 
@@ -33,36 +35,28 @@ test -f data/prepared/COVID/statistics.json
 test -f data/prepared/Kvasir/statistics.json
 mkdir -p "$NCFM_MATH_ROOT"
 
-case "$SLURM_ARRAY_TASK_ID" in
-  0) DATASET=PathMNIST; EXP=e1.1 ;;  1) DATASET=PathMNIST; EXP=e1.2 ;;
-  2) DATASET=PathMNIST; EXP=e2.1 ;;  3) DATASET=PathMNIST; EXP=e2.2 ;;
-  4) DATASET=PathMNIST; EXP=e3.1 ;;  5) DATASET=PathMNIST; EXP=e3.2 ;;
-  6) DATASET=PathMNIST; EXP=e4.1 ;;  7) DATASET=PathMNIST; EXP=e4.2 ;;
-  8) DATASET=COVID;     EXP=e1.1 ;;  9) DATASET=COVID;     EXP=e1.2 ;;
-  10) DATASET=COVID;    EXP=e2.1 ;;  11) DATASET=COVID;    EXP=e2.2 ;;
-  12) DATASET=COVID;    EXP=e3.1 ;; 13) DATASET=COVID;    EXP=e3.2 ;;
-  14) DATASET=COVID;    EXP=e4.1 ;; 15) DATASET=COVID;    EXP=e4.2 ;;
-  16) DATASET=Kvasir;   EXP=e1.1 ;; 17) DATASET=Kvasir;   EXP=e1.2 ;;
-  18) DATASET=Kvasir;   EXP=e2.1 ;; 19) DATASET=Kvasir;   EXP=e2.2 ;;
-  20) DATASET=Kvasir;   EXP=e3.1 ;; 21) DATASET=Kvasir;   EXP=e3.2 ;;
-  22) DATASET=Kvasir;   EXP=e4.1 ;; 23) DATASET=Kvasir;   EXP=e4.2 ;;
-  *) exit 2 ;;
-esac
-
 : "${ARTIFACT_MANIFEST:?Set ARTIFACT_MANIFEST to the explicit formal artifact manifest}"
 test -f "$ARTIFACT_MANIFEST"
 
-RUN_ID="phase1_real_${DATASET,,}_${EXP//./_}_array${SLURM_ARRAY_JOB_ID}_task${SLURM_ARRAY_TASK_ID}"
 export SLURM_STDOUT_PATH="$ROOT/logs/ncfm-real-phase1_${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}.out"
 export SLURM_STDERR_PATH="$ROOT/logs/ncfm-real-phase1_${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}.err"
-ARGS=(
-  --dataset "$DATASET"
-  --experiment "$EXP"
-  --run-id "$RUN_ID"
-  --num-freqs "${NUM_FREQS:-4096}"
-  --replicas "${REPLICAS:-20}"
-  --max-samples "${MAX_SAMPLES:-1024}"
-  --teacher-id "${TEACHER_ID:-0}"
-  --artifact-manifest "$ARTIFACT_MANIFEST"
-)
-exec "$PY" research/ncfm_medical_analysis/code/real_phase1.py "${ARGS[@]}"
+
+DATASETS=(PathMNIST COVID Kvasir)
+EXPERIMENTS=(e1.1 e1.2 e2.1 e2.2 e3.1 e3.2 e4.1 e4.2)
+for (( logical_index=SLURM_ARRAY_TASK_ID; logical_index<24; logical_index+=SLURM_ARRAY_TASK_COUNT )); do
+  dataset_index=$((logical_index / 8))
+  experiment_index=$((logical_index % 8))
+  DATASET="${DATASETS[$dataset_index]}"
+  EXP="${EXPERIMENTS[$experiment_index]}"
+  RUN_ID="phase1_real_${DATASET,,}_${EXP//./_}_array${SLURM_ARRAY_JOB_ID}_task${SLURM_ARRAY_TASK_ID}_index${logical_index}"
+  echo "===== logical_index=$logical_index dataset=$DATASET experiment=$EXP start=$(date -Is) ====="
+  "$PY" research/ncfm_medical_analysis/code/real_phase1.py \
+    --dataset "$DATASET" \
+    --experiment "$EXP" \
+    --run-id "$RUN_ID" \
+    --num-freqs "${NUM_FREQS:-4096}" \
+    --replicas "${REPLICAS:-20}" \
+    --max-samples "${MAX_SAMPLES:-1024}" \
+    --teacher-id "${TEACHER_ID:-0}" \
+    --artifact-manifest "$ARTIFACT_MANIFEST"
+done

@@ -47,7 +47,11 @@ done
 
 for seed in "${seed_list[@]}"; do
   run_id="${SWEEP_TAG}-${VARIANT}-${SLUG}-seed${seed}"
+  run_stdout="$ROOT/logs/ncfm-variant-${SLURM_JOB_ID}-${run_id}.out"
+  run_stderr="$ROOT/logs/ncfm-variant-${SLURM_JOB_ID}-${run_id}.err"
   echo "===== variant=$VARIANT dataset=$DATASET seed=$seed run_id=$run_id start=$(date -Is) ====="
+  echo "stdout=$run_stdout"
+  echo "stderr=$run_stderr"
   BENCHMARK_ROOT="$ROOT" \
   DATASET="$DATASET" \
   VARIANT="$VARIANT" \
@@ -55,7 +59,9 @@ for seed in "${seed_list[@]}"; do
   RUN_ID="$run_id" \
   TEACHER_RUN_ID="$TEACHER_RUN_ID" \
   NPROC_PER_NODE="$NPROC" \
-  bash scripts/ncfm_condense_variant.sbatch
+  SLURM_STDOUT_PATH="$run_stdout" \
+  SLURM_STDERR_PATH="$run_stderr" \
+  bash scripts/ncfm_condense_variant.sbatch >"$run_stdout" 2>"$run_stderr"
   echo "===== variant=$VARIANT dataset=$DATASET seed=$seed run_id=$run_id done=$(date -Is) ====="
 done
 

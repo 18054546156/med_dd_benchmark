@@ -8,10 +8,13 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32G
-#SBATCH --time=2-00:00:00
+#SBATCH --time=7-00:00:00
 # 3 variants x 3 datasets x 5 seeds x 2 architectures = 90 entries.
 # The submitter enforces at least five seeds; the formal default is exactly 5.
-#SBATCH --array=0-89%6
+# Four tasks process 22 or 23 manifest entries each.  Together with the nine
+# condenser jobs and follow-up jobs, this also keeps standalone submission at
+# or below MaxSubmitJobsPerUser=15.
+#SBATCH --array=0-3
 #SBATCH --output=logs/ncfm-p2-eval_%A_%a.out
 #SBATCH --error=logs/ncfm-p2-eval_%A_%a.err
 
@@ -29,6 +32,11 @@ if type module >/dev/null 2>&1; then
   module load anaconda3/3.12
   module load cuda/12.6
 fi
-exec "$PY" scripts/run_variant_eval.py \
-  --root "$ROOT" --manifest "$MANIFEST" --index "$SLURM_ARRAY_TASK_ID" \
-  --repeats "${REPEATS:-5}"
+ENTRY_COUNT="$($PY -c 'import json,sys; print(len(json.load(open(sys.argv[1]))["evaluations"]))' "$MANIFEST")"
+test "$ENTRY_COUNT" -eq 90
+for (( index=SLURM_ARRAY_TASK_ID; index<ENTRY_COUNT; index+=SLURM_ARRAY_TASK_COUNT )); do
+  echo "===== Phase 2 evaluation index=$index start=$(date -Is) ====="
+  "$PY" scripts/run_variant_eval.py \
+    --root "$ROOT" --manifest "$MANIFEST" --index "$index" \
+    --repeats "${REPEATS:-5}"
+done

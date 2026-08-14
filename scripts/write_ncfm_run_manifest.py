@@ -45,6 +45,10 @@ def source_provenance(root: Path) -> dict:
         "adapted/ncfm/utils/utils.py",
         "adapted/ncfm/utils/init_script.py",
         "utils/medical_dataset_utils.py",
+        "scripts/ncfm_pipeline.sbatch",
+        "scripts/ncfm_condense_variant.sbatch",
+        "scripts/ncfm_variant_seed_sweep.sbatch",
+        "scripts/write_ncfm_run_manifest.py",
     )
     files = {}
     for relative in relative_files:
@@ -163,7 +167,9 @@ def main() -> int:
         },
     }
     output.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
-    print(json.dumps({"status": "complete", "manifest": str(output)}))
+    # This writer is deliberately silent.  It runs as the final command in
+    # the Slurm script, after the script has printed the output path, so the
+    # stdout/stderr hashes above remain valid when the job closes its logs.
     return 0
 
 

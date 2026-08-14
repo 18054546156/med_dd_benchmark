@@ -132,6 +132,7 @@ echo "===== NCFM pipeline complete date=$(date -Is) ====="
 echo "dataset=$DATASET"
 echo "pretrained_dir=$PRETRAIN_DIR"
 echo "synthetic_data=$SYNTHETIC_PATH"
+echo "run_manifest=$NCFM_MATH_ROOT/runs/ncfm/$SLUG/$RUN_ID/run_manifest.json"
 
 # Register immutable provenance for the formal benchmark artifact gate.
 "$PY" "$ROOT/scripts/write_ncfm_run_manifest.py" \

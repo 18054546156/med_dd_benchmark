@@ -8,6 +8,8 @@ import hashlib
 import json
 from pathlib import Path
 
+from artifact_integrity import verify_run_manifest_integrity
+
 
 DATASETS = {"PathMNIST", "COVID", "Kvasir"}
 METHODS = {"NCFM", "HoP"}
@@ -92,6 +94,7 @@ def main() -> int:
                     raise ValueError(
                         f"source run manifest identity mismatch: {source}"
                     )
+                source_integrity = verify_run_manifest_integrity(root, source_payload)
                 contract = source_payload.get("method_contract")
                 if not isinstance(contract, dict):
                     raise ValueError(f"source run manifest has no method_contract: {source}")
@@ -102,6 +105,13 @@ def main() -> int:
                 }
                 if mismatches:
                     raise ValueError(f"source run manifest contract mismatch: {source}: {mismatches}")
+                if method == "HoP":
+                    lr_img = contract.get("lr_img")
+                    selection = contract.get("lr_selection")
+                    if not isinstance(lr_img, (int, float)) or lr_img <= 0:
+                        raise ValueError(f"HoP source manifest has invalid lr_img: {source}")
+                    if selection not in {"config_fixed", "largest_finite_short_run"}:
+                        raise ValueError(f"HoP source manifest has invalid lr_selection: {source}")
                 declared = resolve(
                     root, str(source_payload.get("synthetic", {}).get("path", ""))
                 )
@@ -109,7 +119,11 @@ def main() -> int:
                     raise ValueError(
                         f"source run manifest synthetic does not match entry: {source}"
                     )
-                source_meta = {"path": str(source), "sha256": sha256(source)}
+                source_meta = {
+                    "path": str(source),
+                    "sha256": sha256(source),
+                    "integrity": source_integrity,
+                }
             output_value = str(entry.get("path", ""))
             if not output_value or "<" in output_value or ">" in output_value:
                 raise ValueError("output path is not explicitly filled")

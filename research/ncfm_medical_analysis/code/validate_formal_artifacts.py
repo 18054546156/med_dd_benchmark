@@ -9,6 +9,8 @@ import json
 import re
 from pathlib import Path
 
+from artifact_integrity import verify_run_manifest_integrity
+
 import torch
 
 
@@ -121,6 +123,7 @@ def check_run_binding(root: Path, entry: dict, dataset: str, teacher_dir: Path, 
     payload = json.loads(path.read_text(encoding="utf-8"))
     if payload.get("status") != "complete" or payload.get("method") != "NCFM" or payload.get("dataset") != dataset:
         raise ValueError(f"run_manifest identity/status mismatch: {path}")
+    integrity = verify_run_manifest_integrity(root, payload)
     contract = payload.get("method_contract")
     if not isinstance(contract, dict):
         raise ValueError(f"run_manifest has no method_contract: {path}")
@@ -157,6 +160,7 @@ def check_run_binding(root: Path, entry: dict, dataset: str, teacher_dir: Path, 
         "sha256": sha256(path),
         "run_id": payload.get("run_id"),
         "method_contract": contract,
+        "integrity": integrity,
     }
 
 

@@ -12,7 +12,8 @@
 #SBATCH --gres=gpu:1
 #SBATCH --mem=32G
 #SBATCH --time=12:00:00
-#SBATCH --array=0-8
+# Three Slurm tasks each execute one method for all three datasets.
+#SBATCH --array=0-2
 #SBATCH --output=logs/ncfm-phase2_%A_%a.out
 #SBATCH --error=logs/ncfm-phase2_%A_%a.err
 
@@ -33,22 +34,18 @@ if type module >/dev/null 2>&1; then
   module load cuda/12.6
 fi
 
-case "$SLURM_ARRAY_TASK_ID" in
-  0) DATASET=PathMNIST; METHOD=qmc ;;
-  1) DATASET=PathMNIST; METHOD=importance ;;
-  2) DATASET=PathMNIST; METHOD=certificate ;;
-  3) DATASET=COVID;     METHOD=qmc ;;
-  4) DATASET=COVID;     METHOD=importance ;;
-  5) DATASET=COVID;     METHOD=certificate ;;
-  6) DATASET=Kvasir;    METHOD=qmc ;;
-  7) DATASET=Kvasir;    METHOD=importance ;;
-  8) DATASET=Kvasir;    METHOD=certificate ;;
-  *) exit 2 ;;
-esac
-
-RUN_ID="phase2_${DATASET,,}_${METHOD}_array${SLURM_ARRAY_JOB_ID}_task${SLURM_ARRAY_TASK_ID}"
-OUTPUT="$NCFM_MATH_ROOT/phase2/$RUN_ID/results.json"
-exec "$PY" research/ncfm_medical_analysis/code/phase2_analysis.py \
-  --dataset "$DATASET" --method "$METHOD" --run-id "$RUN_ID" \
-  --artifact-manifest "$MANIFEST" --replicas "${REPLICAS:-20}" \
-  --num-freqs "${NUM_FREQS:-4096}" --output "$OUTPUT"
+DATASETS=(PathMNIST COVID Kvasir)
+METHODS=(qmc importance certificate)
+for (( logical_index=SLURM_ARRAY_TASK_ID; logical_index<9; logical_index+=SLURM_ARRAY_TASK_COUNT )); do
+  dataset_index=$((logical_index / 3))
+  method_index=$((logical_index % 3))
+  DATASET="${DATASETS[$dataset_index]}"
+  METHOD="${METHODS[$method_index]}"
+  RUN_ID="phase2_${DATASET,,}_${METHOD}_array${SLURM_ARRAY_JOB_ID}_task${SLURM_ARRAY_TASK_ID}_index${logical_index}"
+  OUTPUT="$NCFM_MATH_ROOT/phase2/$RUN_ID/results.json"
+  echo "===== logical_index=$logical_index dataset=$DATASET method=$METHOD start=$(date -Is) ====="
+  "$PY" research/ncfm_medical_analysis/code/phase2_analysis.py \
+    --dataset "$DATASET" --method "$METHOD" --run-id "$RUN_ID" \
+    --artifact-manifest "$MANIFEST" --replicas "${REPLICAS:-20}" \
+    --num-freqs "${NUM_FREQS:-4096}" --output "$OUTPUT"
+done

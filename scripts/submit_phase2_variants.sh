@@ -10,6 +10,7 @@ NCFM_PATHMNIST_RUN_ID="${NCFM_PATHMNIST_RUN_ID:?baseline PathMNIST RUN_ID}"
 NCFM_COVID_RUN_ID="${NCFM_COVID_RUN_ID:?baseline COVID RUN_ID}"
 NCFM_KVASIR_RUN_ID="${NCFM_KVASIR_RUN_ID:?baseline Kvasir RUN_ID}"
 BASELINE_EVAL_DEPENDENCY="${BASELINE_EVAL_DEPENDENCY:-}"
+DEFER_FOLLOWUP="${DEFER_FOLLOWUP:-0}"
 cd "$ROOT"
 mkdir -p "$ROOT/logs"
 mkdir -p "$MATH_ROOT"
@@ -47,9 +48,15 @@ for item in "PathMNIST pathmnist ${NCFM_PATHMNIST_RUN_ID}" "COVID covid ${NCFM_C
   done
 done
 
+if [[ "$DEFER_FOLLOWUP" == 1 ]]; then
+  printf 'phase2_tag=%s\nphase2_seeds=%s\nvariant_job_count=%s\nvariant_jobs=%s\nfollowup=deferred\n' \
+    "$PHASE2_TAG" "$PHASE2_SEEDS" "${#jobs[@]}" "${jobs[*]}"
+  exit 0
+fi
+
 dep="afterok:$(IFS=:; echo "${jobs[*]}")"
 MANIFEST_JOB="$(sbatch --parsable --job-name=ncfm-p2-manifest --dependency="$dep" \
-  --export="ALL,NCFM_MATH_ROOT=${MATH_ROOT},PHASE2_TAG=${PHASE2_TAG},PHASE2_SEEDS=${PHASE2_SEEDS}" \
+  --export="ALL,NCFM_MATH_ROOT=${MATH_ROOT},PHASE2_TAG=${PHASE2_TAG}" \
   --wrap="cd '$ROOT' && '/home/xiaoyuxu2/.conda/envs/meddd/bin/python' scripts/build_phase2_variant_manifest.py --root '$ROOT' --phase2-tag '$PHASE2_TAG' --seeds '$PHASE2_SEEDS'")"
 EVAL_JOB="$(sbatch --parsable --job-name=ncfm-p2-eval --dependency="afterok:${MANIFEST_JOB}" \
   --export="ALL,NCFM_MATH_ROOT=${MATH_ROOT},PHASE2_VARIANT_MANIFEST=${MATH_ROOT}/phase2_variant_manifest.json" \

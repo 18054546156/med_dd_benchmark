@@ -97,6 +97,8 @@ def evaluation_rows(root: Path, manifest_path: Path | None) -> list[dict]:
         if expected != actual:
             raise ValueError(f"Evaluation manifest metadata does not match {path}: expected={expected}, actual={actual}")
         source_value = item.get("source_run_manifest")
+        source_contract = None
+        source_manifest_meta = None
         if source_value:
             source_path = Path(str(source_value))
             if not source_path.is_absolute():
@@ -118,6 +120,8 @@ def evaluation_rows(root: Path, manifest_path: Path | None) -> list[dict]:
                 entry_synthetic = (root / entry_synthetic).resolve()
             if declared_synthetic.resolve() != entry_synthetic.resolve():
                 raise ValueError(f"Evaluation source manifest synthetic does not match {path}")
+            source_contract = source_payload.get("method_contract")
+            source_manifest_meta = {"path": str(source_path), "sha256": sha256(source_path)}
         rows.append({
             "path": str(path),
             "sha256": sha256(path),
@@ -127,6 +131,8 @@ def evaluation_rows(root: Path, manifest_path: Path | None) -> list[dict]:
             "status": payload.get("status", "failed"),
             "test_accuracy": payload.get("test_accuracy"),
             "protocol": payload.get("protocol"),
+            "source_run_manifest": source_manifest_meta,
+            "source_method_contract": source_contract,
         })
     return rows
 
@@ -473,10 +479,15 @@ def markdown(report: dict) -> str:
     for row in report["phase1"]:
         reason = row["evidence_reason"].replace("|", "/")
         lines.append(f"| {row['dataset']} | {row['experiment']} | {row['status']} | {row['evidence_status']} | {reason} |")
-    lines += ["", "## Controlled Evaluation", "", "| Method | Dataset | Architecture | Status | Mean test accuracy |", "|---|---|---|---|---|"]
+    lines += ["", "## Controlled Evaluation", "", "| Method | Dataset | Architecture | Status | Mean test accuracy | Source method contract |", "|---|---|---|---|---|---|"]
     for row in report["controlled_evaluations"]:
         accuracy = (row.get("test_accuracy") or {}).get("mean") if isinstance(row.get("test_accuracy"), dict) else None
-        lines.append(f"| {row.get('method')} | {row.get('dataset')} | {row.get('architecture')} | {row.get('status')} | {accuracy} |")
+        contract = row.get("source_method_contract") or {}
+        if row.get("method") == "HoP":
+            contract_note = f"lr_img={contract.get('lr_img')}, selection={contract.get('lr_selection')}"
+        else:
+            contract_note = f"num_freqs={contract.get('num_freqs')}, sampling_net={contract.get('sampling_net')}"
+        lines.append(f"| {row.get('method')} | {row.get('dataset')} | {row.get('architecture')} | {row.get('status')} | {accuracy} | {contract_note} |")
     lines += ["", "## Phase 2 diagnostics", "", "| Method | Dataset | Status | Claim scope |", "|---|---|---|---|"]
     for row in report["phase2"]:
         lines.append(f"| {row.get('method')} | {row.get('dataset')} | {row.get('status')} | {row.get('claim_scope', '')} |")

@@ -9,6 +9,7 @@ NCFM_PATHMNIST_RUN_ID="${NCFM_PATHMNIST_RUN_ID:?baseline PathMNIST RUN_ID}"
 NCFM_COVID_RUN_ID="${NCFM_COVID_RUN_ID:?baseline COVID RUN_ID}"
 NCFM_KVASIR_RUN_ID="${NCFM_KVASIR_RUN_ID:?baseline Kvasir RUN_ID}"
 PHASE1_DEPENDENCY="${PHASE1_DEPENDENCY:-}"
+DEFER_FOLLOWUP="${DEFER_FOLLOWUP:-0}"
 cd "$ROOT"
 mkdir -p "$ROOT/logs"
 mkdir -p "$MATH_ROOT"
@@ -37,6 +38,11 @@ for item in "PathMNIST pathmnist ${NCFM_PATHMNIST_RUN_ID}" "COVID covid ${NCFM_C
   submit_sweep "$dataset" "$slug" baseline_seed "$teacher"
   submit_sweep "$dataset" "$slug" pixel_mean "$teacher"
 done
+
+if [[ "$DEFER_FOLLOWUP" == 1 ]]; then
+  printf 'phase1_replication_tag=%s\ncondense_jobs=%s\nfollowup=deferred\n' "$TAG" "${jobs[*]}"
+  exit 0
+fi
 
 dep="afterok:$(IFS=:; echo "${jobs[*]}")"
 BUILD_JOB="$(sbatch --parsable --job-name=ncfm-p1-rep-manifest --dependency="$dep" \

@@ -19,6 +19,7 @@ export PYTHONUNBUFFERED=1
 export OMP_NUM_THREADS="${OMP_NUM_THREADS:-1}"
 
 ROOT="${BENCHMARK_ROOT:-/project/prj-sis01/xiaoyu_xu/med_dd_project/dd_benchmark}"
+export NCFM_MATH_ROOT="${NCFM_MATH_ROOT:-$ROOT/research/ncfm_mathematical_analysis}"
 DATASET="${DATASET:?set DATASET=PathMNIST|COVID|Kvasir}"
 VARIANT="${VARIANT:?set VARIANT=qmc|importance|learned_frequency|baseline_seed|pixel_mean}"
 RUN_ID="${RUN_ID:?set a unique variant RUN_ID}"
@@ -95,10 +96,11 @@ mapfile -t matches < <(find "$CONDENSE_ROOT" -type f \
   -path "*_${RUN_ID}/distilled_data/data_20000.pt" -print | sort)
 test "${#matches[@]}" -eq 1
 SYNTHETIC_PATH="${matches[0]}"
+echo "variant=$VARIANT dataset=$DATASET run_id=$RUN_ID synthetic_data=$SYNTHETIC_PATH"
+echo "run_manifest=$NCFM_MATH_ROOT/runs/ncfm/$SLUG/$RUN_ID/run_manifest.json"
 "$PY" "$ROOT/scripts/write_ncfm_run_manifest.py" \
   --root "$ROOT" --dataset "$DATASET" --run-id "$RUN_ID" \
   --config "$CONFIG" --pretrain-dir "$TEACHER_DIR" \
   --synthetic "$SYNTHETIC_PATH" \
-  --stdout "$ROOT/logs/ncfm-variant-${SLURM_JOB_ID}.out" \
-  --stderr "$ROOT/logs/ncfm-variant-${SLURM_JOB_ID}.err"
-echo "variant=$VARIANT dataset=$DATASET run_id=$RUN_ID synthetic_data=$SYNTHETIC_PATH"
+  --stdout "${SLURM_STDOUT_PATH:-$ROOT/logs/ncfm-variant-${SLURM_JOB_ID}.out}" \
+  --stderr "${SLURM_STDERR_PATH:-$ROOT/logs/ncfm-variant-${SLURM_JOB_ID}.err}"

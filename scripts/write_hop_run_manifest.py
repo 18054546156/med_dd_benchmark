@@ -35,6 +35,8 @@ def source_provenance(root: Path) -> dict:
         "adapted/hop_tm/distill/distill_high_order_spl.py",
         "adapted/hop_tm/distill/evaluation.py",
         "utils/medical_dataset_utils.py",
+        "scripts/hop_tm_pipeline_4gpu.sbatch",
+        "scripts/write_hop_run_manifest.py",
     )
     files = {}
     for relative in relative_files:
@@ -61,6 +63,8 @@ def main() -> int:
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--buffer-dir", type=Path, required=True)
     parser.add_argument("--synthetic", type=Path, required=True)
+    parser.add_argument("--lr-img", type=float, required=True)
+    parser.add_argument("--lr-selection-manifest", type=Path, required=True)
     parser.add_argument("--stdout", type=Path, required=True)
     parser.add_argument("--stderr", type=Path, required=True)
     args = parser.parse_args()
@@ -71,6 +75,7 @@ def main() -> int:
 
     config = required(from_root(args.config), "config")
     synthetic = required(from_root(args.synthetic), "synthetic")
+    lr_selection = required(from_root(args.lr_selection_manifest), "lr selection manifest")
     stdout = required(from_root(args.stdout), "stdout")
     stderr = required(from_root(args.stderr), "stderr")
     statistics = required(
@@ -116,6 +121,7 @@ def main() -> int:
             "trajectory_states": 101,
         },
         "synthetic": {"path": str(synthetic), "sha256": digest(synthetic)},
+        "lr_selection": {"path": str(lr_selection), "sha256": digest(lr_selection)},
         "provenance": {
             "command": {"path": str(command), "sha256": digest(command)},
             "stdout": {"path": str(stdout), "sha256": digest(stdout)},
@@ -125,11 +131,14 @@ def main() -> int:
             "buffer_experts": 100,
             "distill_iterations": 10000,
             "augmentation": "DSA",
+            "lr_img": args.lr_img,
+            "lr_selection": json.loads(lr_selection.read_text(encoding="utf-8"))["selection_rule"],
             "downstream_evaluation": "separate controlled evaluator",
         },
     }
     output.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
-    print(json.dumps({"status": "complete", "manifest": str(output)}))
+    # Keep this final provenance writer silent so the Slurm log hashes remain
+    # stable after the enclosing pipeline exits.
     return 0
 
 

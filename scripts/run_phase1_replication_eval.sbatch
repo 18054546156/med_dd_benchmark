@@ -9,7 +9,8 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32G
 #SBATCH --time=2-00:00:00
-#SBATCH --array=0-29%6
+# Six tasks process five manifest entries each.
+#SBATCH --array=0-5
 #SBATCH --output=logs/ncfm-phase1-rep-eval_%A_%a.out
 #SBATCH --error=logs/ncfm-phase1-rep-eval_%A_%a.err
 
@@ -27,6 +28,11 @@ if type module >/dev/null 2>&1; then
   module load anaconda3/3.12
   module load cuda/12.6
 fi
-exec "$PY" scripts/run_variant_eval.py \
-  --root "$ROOT" --manifest "$MANIFEST" --index "$SLURM_ARRAY_TASK_ID" \
-  --repeats "${REPEATS:-5}"
+ENTRY_COUNT="$($PY -c 'import json,sys; print(len(json.load(open(sys.argv[1]))["evaluations"]))' "$MANIFEST")"
+test "$ENTRY_COUNT" -eq 30
+for (( index=SLURM_ARRAY_TASK_ID; index<ENTRY_COUNT; index+=SLURM_ARRAY_TASK_COUNT )); do
+  echo "===== replication evaluation index=$index start=$(date -Is) ====="
+  "$PY" scripts/run_variant_eval.py \
+    --root "$ROOT" --manifest "$MANIFEST" --index "$index" \
+    --repeats "${REPEATS:-5}"
+done
