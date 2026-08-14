@@ -14,8 +14,8 @@ mkdir -p "$ROOT/logs"
 mkdir -p "$MATH_ROOT"
 
 declare -a jobs=()
-submit_one() {
-  local dataset="$1" slug="$2" variant="$3" seed="$4" teacher="$5"
+submit_sweep() {
+  local dataset="$1" slug="$2" variant="$3" teacher="$4"
   local nproc
   case "$dataset" in
     PathMNIST) nproc=3 ;;
@@ -26,18 +26,16 @@ submit_one() {
   if [[ -n "$PHASE1_DEPENDENCY" ]]; then
     dependency_args+=(--dependency="$PHASE1_DEPENDENCY")
   fi
-  jobs+=("$(sbatch --parsable "${dependency_args[@]}" --job-name="NCFM-${variant}-${slug}-s${seed}" \
+  jobs+=("$(sbatch --parsable "${dependency_args[@]}" --job-name="NCFM-${variant}-${slug}-sweep" \
     --gres="gpu:${nproc}" \
-    --export="ALL,NCFM_MATH_ROOT=${MATH_ROOT},DATASET=${dataset},VARIANT=${variant},SEED=${seed},RUN_ID=${TAG}-${variant}-${slug}-seed${seed},TEACHER_RUN_ID=${teacher},NPROC_PER_NODE=${nproc}" \
-    scripts/ncfm_condense_variant.sbatch)")
+    --export="ALL,NCFM_MATH_ROOT=${MATH_ROOT},DATASET=${dataset},VARIANT=${variant},SWEEP_TAG=${TAG},TEACHER_RUN_ID=${teacher},NPROC_PER_NODE=${nproc},VARIANT_SEEDS=0:1:2:3:4" \
+    scripts/ncfm_variant_seed_sweep.sbatch)")
 }
 
 for item in "PathMNIST pathmnist ${NCFM_PATHMNIST_RUN_ID}" "COVID covid ${NCFM_COVID_RUN_ID}" "Kvasir kvasir ${NCFM_KVASIR_RUN_ID}"; do
   read -r dataset slug teacher <<< "$item"
-  for seed in 0 1 2 3 4; do
-    submit_one "$dataset" "$slug" baseline_seed "$seed" "$teacher"
-    submit_one "$dataset" "$slug" pixel_mean "$seed" "$teacher"
-  done
+  submit_sweep "$dataset" "$slug" baseline_seed "$teacher"
+  submit_sweep "$dataset" "$slug" pixel_mean "$teacher"
 done
 
 dep="afterok:$(IFS=:; echo "${jobs[*]}")"

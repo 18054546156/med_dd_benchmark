@@ -32,7 +32,7 @@ STATUS_PATH="$NCFM_MATH_ROOT/production_followup_${SLURM_JOB_ID}.json"
 
 if [[ -f "$ARTIFACT_MANIFEST" && -f "$EVAL_MANIFEST" && "$RUN_TAG" != unknown ]]; then
   if grep -Fq "$RUN_TAG" "$ARTIFACT_MANIFEST" && grep -Fq "$RUN_TAG" "$EVAL_MANIFEST"; then
-    exec bash research/ncfm_medical_analysis/code/submit_formal_pipeline.sbatch
+    exec bash research/ncfm_medical_analysis/code/submit_formal_pipeline_staged.sbatch
   fi
 fi
 

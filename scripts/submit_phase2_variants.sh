@@ -22,7 +22,7 @@ fi
 IFS=$' \t\n'
 
 submit_variant() {
-  local dataset="$1" slug="$2" variant="$3" seed="$4" teacher_var="$5"
+  local dataset="$1" slug="$2" variant="$3" teacher_run_id="$4"
   local nproc
   case "$dataset" in
     PathMNIST) nproc=3 ;;
@@ -33,19 +33,17 @@ submit_variant() {
   if [[ -n "$BASELINE_EVAL_DEPENDENCY" ]]; then
     dependency_args+=(--dependency="$BASELINE_EVAL_DEPENDENCY")
   fi
-  sbatch --parsable "${dependency_args[@]}" --job-name="NCFM-${variant}-${slug}-s${seed}" \
+  sbatch --parsable "${dependency_args[@]}" --job-name="NCFM-${variant}-${slug}-sweep" \
     --gres="gpu:${nproc}" \
-    --export="ALL,NCFM_MATH_ROOT=${MATH_ROOT},DATASET=${dataset},VARIANT=${variant},SEED=${seed},RUN_ID=${PHASE2_TAG}-${variant}-${slug}-seed${seed},TEACHER_RUN_ID=${!5},NPROC_PER_NODE=${nproc}" \
-    scripts/ncfm_condense_variant.sbatch
+    --export="ALL,NCFM_MATH_ROOT=${MATH_ROOT},DATASET=${dataset},VARIANT=${variant},SWEEP_TAG=${PHASE2_TAG},TEACHER_RUN_ID=${teacher_run_id},NPROC_PER_NODE=${nproc},VARIANT_SEEDS=${PHASE2_SEEDS//,/:}" \
+    scripts/ncfm_variant_seed_sweep.sbatch
 }
 
 declare -a jobs=()
-for item in "PathMNIST pathmnist NCFM_PATHMNIST_RUN_ID" "COVID covid NCFM_COVID_RUN_ID" "Kvasir kvasir NCFM_KVASIR_RUN_ID"; do
-  read -r dataset slug teacher_var <<< "$item"
+for item in "PathMNIST pathmnist ${NCFM_PATHMNIST_RUN_ID}" "COVID covid ${NCFM_COVID_RUN_ID}" "Kvasir kvasir ${NCFM_KVASIR_RUN_ID}"; do
+  read -r dataset slug teacher_run_id <<< "$item"
   for variant in qmc importance learned_frequency; do
-    for seed in ${PHASE2_SEEDS//,/ }; do
-      jobs+=("$(submit_variant "$dataset" "$slug" "$variant" "$seed" "$teacher_var")")
-    done
+    jobs+=("$(submit_variant "$dataset" "$slug" "$variant" "$teacher_run_id")")
   done
 done
 

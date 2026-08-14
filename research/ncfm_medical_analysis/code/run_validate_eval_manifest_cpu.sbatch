@@ -12,7 +12,7 @@
 #SBATCH --error=logs/dd-eval-manifest-gate_%j.err
 
 set -Eeuo pipefail
-ROOT="/project/prj-sis01/xiaoyu_xu/med_dd_project/dd_benchmark"
+ROOT="${BENCHMARK_ROOT:-/project/prj-sis01/xiaoyu_xu/med_dd_project/dd_benchmark}"
 export NCFM_MATH_ROOT="${NCFM_MATH_ROOT:-$ROOT/research/ncfm_mathematical_analysis}"
 PY="/home/xiaoyuxu2/.conda/envs/meddd/bin/python"
 MANIFEST="${CONTROLLED_EVAL_MANIFEST:?Set CONTROLLED_EVAL_MANIFEST}"

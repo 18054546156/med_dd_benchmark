@@ -16,7 +16,7 @@
 set -Eeuo pipefail
 export PYTHONUNBUFFERED=1
 export OMP_NUM_THREADS=1
-ROOT="/project/prj-sis01/xiaoyu_xu/med_dd_project/dd_benchmark"
+ROOT="${BENCHMARK_ROOT:-/project/prj-sis01/xiaoyu_xu/med_dd_project/dd_benchmark}"
 PY="/home/xiaoyuxu2/.conda/envs/meddd/bin/python"
 MANIFEST="${CONTROLLED_EVAL_MANIFEST:?Set CONTROLLED_EVAL_MANIFEST to an explicit 12-entry manifest}"
 cd "$ROOT"

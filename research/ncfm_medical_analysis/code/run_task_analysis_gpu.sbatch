@@ -16,7 +16,7 @@
 set -Eeuo pipefail
 export PYTHONUNBUFFERED=1
 export OMP_NUM_THREADS=1
-ROOT="/project/prj-sis01/xiaoyu_xu/med_dd_project/dd_benchmark"
+ROOT="${BENCHMARK_ROOT:-/project/prj-sis01/xiaoyu_xu/med_dd_project/dd_benchmark}"
 PY="/home/xiaoyuxu2/.conda/envs/meddd/bin/python"
 : "${ARTIFACT_MANIFEST:?Set ARTIFACT_MANIFEST to the filled formal artifact manifest}"
 case "$SLURM_ARRAY_TASK_ID" in
