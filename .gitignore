@@ -1,6 +1,16 @@
 # 官方 raw 仓库保留各自的 Git 历史，不纳入外层仓库。
 raw/
 
+# Medical image datasets are local/HPC inputs, not source files.
+datasets/
+data_candidates/
+**/covid*/
+**/COVID*/
+**/kvasir*/
+**/Kvasir*/
+**/pathmnist*/
+**/PathMNIST*/
+
 # 下载数据、预处理图片和运行时产物不进入源码版本控制。
 /data/*
 !/data/prepared/
