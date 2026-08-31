@@ -1,0 +1,114 @@
+distibution_train:
+  backend: nccl
+  init_method: env://
+  workers: 8
+  deterministic: true
+dataset:
+  dataset: pathmnist
+  nclass: 9
+  size: 28
+  data_dir: assets/datasets
+  load_memory: true
+  batch_real: 1024
+  nch: 3
+network:
+  net_type: convnet
+  norm_type: instance
+  depth: 3
+  width: 1.0
+train:
+  evaluation_epochs: 2000
+  epoch_print_freq: 10
+  epoch_eval_interval: 100
+  pertrain_epochs: 60
+  batch_size: 128
+  lr: 0.01
+  adamw_lr: 0.001
+  eval_optimizer: adamw
+  momentum: 0.9
+  weight_decay: 0.0005
+  seed: 0
+  model_num: 20
+augmentation:
+  mixup: cut
+  beta: 1.0
+  mix_p: 0.5
+  rrc: true
+  dsa: true
+  dsa_strategy: color_crop_cutout_flip_scale_rotate
+  aug_type: color_crop_cutout
+optimization:
+  optimizer: adamw
+  lr_scale_adam: 0.1
+  lr_img: 0.01
+  mom_img: 0.5
+  lr_sampling_net: 0.001
+save_path:
+  save_dir: runs
+  pretrain_dir: assets/teachers
+condense:
+  ipc: 10
+  num_premodel: 20
+  niter: 2000
+  iter_calib: 1
+  calib_weight: 1
+  sampling_net: true
+  num_freqs: 4096
+  frequency_mode: release_exact_256x16
+  frequency_seed: 1701
+  auxiliary_frequency_seed: 2701
+  dis_metrics: NCFM
+  factor: 2
+  alpha_for_loss: 0.5
+  beta_for_loss: 0.5
+  decode_type: single
+  teacher_model_epoch: 20
+  scheduler_monitor: global_plus_calib
+  experiment_tag: unset
+  real_sampling_mode: cyclic_without_replacement
+  synthetic_sampling_mode: synchronous_live
+  use_direction_token_ncfd: false
+  lambda_direction_token_ncfd: 0.0
+  token_layers: [0, 1, 2]
+  token_layer_weights: [0.333333, 0.333333, 0.333334]
+  token_num_freqs: 256
+  token_radial_weight: 0.25
+  token_loss_scale: 300.0
+  token_gradient_diag_interval: 100
+  token_max_real_tokens: 32768
+  token_max_syn_tokens: 8192
+  use_hierarchical_cf: false
+  lambda_hierarchical_cf: 0.0
+  hmcf_mode: mean_std
+  hmcf_layers: [0, 1, 2]
+  hmcf_layer_weights: [0.333333, 0.333333, 0.333334]
+  hmcf_num_freqs: 128
+  hmcf_loss_scale: 300.0
+  hmcf_eps: 0.000001
+  hmcf_l2_normalize: true
+  hmcf_position_representation: moments
+  hmcf_position_shuffle: false
+  hmcf_position_seed: 3701
+  hmcf_auto_calibrate_dose: true
+  hmcf_target_gradient_dose: 0.03
+  # 以原始合成图的 H-MCF/全局梯度范数比为反馈，每 25 步维持目标剂量。
+  hmcf_recalibration_interval: 25
+  hmcf_dose_ema: 0.9
+  hmcf_lambda_update_clip: [0.5, 2.0]
+  hmcf_min_lambda: 0.00000001
+  hmcf_max_lambda: 100.0
+  hmcf_gradient_diag_interval: 25
+  use_geometric_distance: false
+  geometric_method: energy
+  geometric_mode: auxiliary
+  geometric_target_gradient_dose: 0.0025
+  geometric_recalibration_interval: 25
+  geometric_dose_ema: 0.9
+  geometric_min_weight: 0.00000001
+  geometric_max_weight: 100.0
+  geometric_gradient_diag_interval: 25
+  geometric_sinkhorn_epsilon: 0.1
+  geometric_sinkhorn_iterations: 200
+  geometric_sw_projection_count: 4096
+  geometric_sw_projection_seed: 1701
+  geometric_class_mismatch_offset: 0

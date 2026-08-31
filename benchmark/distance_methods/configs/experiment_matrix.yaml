@@ -1,0 +1,1042 @@
+datasets:
+  pathmnist:
+    base: configs/base/pathmnist.yaml
+    methods:
+      release_reference:
+        deterministic: false
+        sampling_net: true
+        frequency_mode: release_exact_256x16
+        num_freqs: 4096
+        real_sampling_mode: legacy_prefix
+        synthetic_sampling_mode: legacy_async_queue
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+      cyclic_release_u256x16:
+        sampling_net: true
+        frequency_mode: release_exact_256x16
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        synthetic_sampling_mode: legacy_async_queue
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+      fixed_u256:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 256
+        use_direction_token_ncfd: false
+      fixed_u512:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 512
+        use_direction_token_ncfd: false
+      fixed_u1024:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 1024
+        use_direction_token_ncfd: false
+      fixed_u1152:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 1152
+        use_direction_token_ncfd: false
+      fixed_u2048:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 2048
+        use_direction_token_ncfd: false
+      fixed_u4096:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+      energy_replace:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: energy
+        geometric_mode: replacement
+        geometric_target_gradient_dose: 1.0
+      energy_replace_max1000:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: energy
+        geometric_mode: replacement
+        geometric_target_gradient_dose: 1.0
+        geometric_max_weight: 1000.0
+      energy_aux_dose025:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: energy
+        geometric_mode: auxiliary
+        geometric_target_gradient_dose: 0.0025
+      energy_aux_dose050:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: energy
+        geometric_mode: auxiliary
+        geometric_target_gradient_dose: 0.005
+      energy_aux_dose100:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: energy
+        geometric_mode: auxiliary
+        geometric_target_gradient_dose: 0.01
+      sinkhorn_replace_e005:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: sinkhorn
+        geometric_mode: replacement
+        geometric_target_gradient_dose: 1.0
+        geometric_sinkhorn_epsilon: 0.05
+      sinkhorn_replace_e010:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: sinkhorn
+        geometric_mode: replacement
+        geometric_target_gradient_dose: 1.0
+        geometric_sinkhorn_epsilon: 0.1
+      sinkhorn_replace_e020:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: sinkhorn
+        geometric_mode: replacement
+        geometric_target_gradient_dose: 1.0
+        geometric_sinkhorn_epsilon: 0.2
+      sw_aux_k4096_dose025:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: sliced_wasserstein
+        geometric_mode: auxiliary
+        geometric_target_gradient_dose: 0.0025
+        geometric_sw_projection_count: 4096
+      legacy_fixed_u4096:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: legacy_prefix
+        synthetic_sampling_mode: legacy_async_queue
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+      cyclic_fixed_u4096_legacy_syn:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        synthetic_sampling_mode: legacy_async_queue
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+      legacy_real_fixed_u4096_live_syn:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: legacy_prefix
+        synthetic_sampling_mode: synchronous_live
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+      hmcf_mean_dose03:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: true
+        hmcf_mode: mean-only
+        hmcf_position_shuffle: false
+        hmcf_target_gradient_dose: 0.03
+      hmcf_std_dose03:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: true
+        hmcf_mode: std-only
+        hmcf_position_shuffle: false
+        hmcf_target_gradient_dose: 0.03
+      hmcf_mean_std_dose01:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: true
+        hmcf_mode: mean_std
+        hmcf_position_shuffle: false
+        hmcf_target_gradient_dose: 0.01
+      hmcf_mean_std_dose03:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: true
+        hmcf_mode: mean_std
+        hmcf_position_shuffle: false
+        hmcf_target_gradient_dose: 0.03
+      hmcf_mean_std_dose06:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: true
+        hmcf_mode: mean_std
+        hmcf_position_shuffle: false
+        hmcf_target_gradient_dose: 0.06
+      hmcf_mean_std_position_dose03:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: true
+        hmcf_mode: mean_std_position
+        hmcf_position_representation: moments
+        hmcf_position_shuffle: false
+        hmcf_target_gradient_dose: 0.03
+      hmcf_mean_std_position_shuffle_dose03:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: true
+        hmcf_mode: mean_std_position
+        hmcf_position_representation: moments
+        hmcf_position_shuffle: true
+        hmcf_target_gradient_dose: 0.03
+      direction_l2_dose01:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        use_direction_token_ncfd: true
+        lambda_direction_token_ncfd: 0.0192
+        token_target_gradient_dose: 0.01
+        token_diagnostic_only: false
+        token_layers:
+        - 2
+        token_layer_weights:
+        - 1.0
+        token_num_freqs: 128
+        token_radial_weight: 0.0
+        token_gradient_diag_interval: 10
+      direction_l2_dose03:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        use_direction_token_ncfd: true
+        lambda_direction_token_ncfd: 0.0576
+        token_target_gradient_dose: 0.03
+        token_diagnostic_only: false
+        token_layers:
+        - 2
+        token_layer_weights:
+        - 1.0
+        token_num_freqs: 128
+        token_radial_weight: 0.0
+        token_gradient_diag_interval: 10
+      direction_l2_dose06:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        use_direction_token_ncfd: true
+        lambda_direction_token_ncfd: 0.1153
+        token_target_gradient_dose: 0.06
+        token_diagnostic_only: false
+        token_layers:
+        - 2
+        token_layer_weights:
+        - 1.0
+        token_num_freqs: 128
+        token_radial_weight: 0.0
+        token_gradient_diag_interval: 10
+      token_diag_layer0:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        use_direction_token_ncfd: true
+        lambda_direction_token_ncfd: 0.0
+        token_diagnostic_only: true
+        token_layers:
+        - 0
+        token_layer_weights:
+        - 1.0
+        token_num_freqs: 128
+        token_radial_weight: 0.0
+        token_gradient_diag_interval: 1
+      token_diag_layer1:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        use_direction_token_ncfd: true
+        lambda_direction_token_ncfd: 0.0
+        token_diagnostic_only: true
+        token_layers:
+        - 1
+        token_layer_weights:
+        - 1.0
+        token_num_freqs: 128
+        token_radial_weight: 0.0
+        token_gradient_diag_interval: 1
+      token_diag_layer2:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        use_direction_token_ncfd: true
+        lambda_direction_token_ncfd: 0.0
+        token_diagnostic_only: true
+        token_layers:
+        - 2
+        token_layer_weights:
+        - 1.0
+        token_num_freqs: 128
+        token_radial_weight: 0.0
+        token_gradient_diag_interval: 1
+      energy_replace_max1000_mismatch:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: energy
+        geometric_mode: replacement
+        geometric_target_gradient_dose: 1.0
+        geometric_max_weight: 1000.0
+        geometric_class_mismatch_offset: 1
+      energy_aux_dose025_mismatch:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: energy
+        geometric_mode: auxiliary
+        geometric_target_gradient_dose: 0.0025
+        geometric_class_mismatch_offset: 1
+      energy_aux_dose050_mismatch:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: energy
+        geometric_mode: auxiliary
+        geometric_target_gradient_dose: 0.005
+        geometric_class_mismatch_offset: 1
+      energy_aux_dose100_mismatch:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: energy
+        geometric_mode: auxiliary
+        geometric_target_gradient_dose: 0.01
+        geometric_class_mismatch_offset: 1
+      sinkhorn_replace_e005_mismatch:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: sinkhorn
+        geometric_mode: replacement
+        geometric_target_gradient_dose: 1.0
+        geometric_sinkhorn_epsilon: 0.05
+        geometric_class_mismatch_offset: 1
+      sinkhorn_replace_e010_mismatch:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: sinkhorn
+        geometric_mode: replacement
+        geometric_target_gradient_dose: 1.0
+        geometric_sinkhorn_epsilon: 0.1
+        geometric_class_mismatch_offset: 1
+      sinkhorn_replace_e020_mismatch:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: sinkhorn
+        geometric_mode: replacement
+        geometric_target_gradient_dose: 1.0
+        geometric_sinkhorn_epsilon: 0.2
+        geometric_class_mismatch_offset: 1
+      sw_aux_k4096_dose025_mismatch:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: sliced_wasserstein
+        geometric_mode: auxiliary
+        geometric_target_gradient_dose: 0.0025
+        geometric_sw_projection_count: 4096
+        geometric_class_mismatch_offset: 1
+      sw_aux_k8192_dose025:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: sliced_wasserstein
+        geometric_mode: auxiliary
+        geometric_target_gradient_dose: 0.0025
+        geometric_sw_projection_count: 8192
+      sw_aux_k8192_dose025_mismatch:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: sliced_wasserstein
+        geometric_mode: auxiliary
+        geometric_target_gradient_dose: 0.0025
+        geometric_sw_projection_count: 8192
+        geometric_class_mismatch_offset: 1
+      sw_stability_k4096_s1701:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: sliced_wasserstein
+        geometric_mode: auxiliary
+        geometric_target_gradient_dose: 0.0025
+        geometric_sw_projection_count: 4096
+        geometric_sw_projection_seed: 1701
+      sw_stability_k4096_s1702:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: sliced_wasserstein
+        geometric_mode: auxiliary
+        geometric_target_gradient_dose: 0.0025
+        geometric_sw_projection_count: 4096
+        geometric_sw_projection_seed: 1702
+      sw_stability_k4096_s1703:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: sliced_wasserstein
+        geometric_mode: auxiliary
+        geometric_target_gradient_dose: 0.0025
+        geometric_sw_projection_count: 4096
+        geometric_sw_projection_seed: 1703
+      sw_stability_k8192_s1701:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: sliced_wasserstein
+        geometric_mode: auxiliary
+        geometric_target_gradient_dose: 0.0025
+        geometric_sw_projection_count: 8192
+        geometric_sw_projection_seed: 1701
+      sw_stability_k8192_s1702:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: sliced_wasserstein
+        geometric_mode: auxiliary
+        geometric_target_gradient_dose: 0.0025
+        geometric_sw_projection_count: 8192
+        geometric_sw_projection_seed: 1702
+      sw_stability_k8192_s1703:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: sliced_wasserstein
+        geometric_mode: auxiliary
+        geometric_target_gradient_dose: 0.0025
+        geometric_sw_projection_count: 8192
+        geometric_sw_projection_seed: 1703
+      sinkhorn_aux_e005_dose025:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: sinkhorn
+        geometric_mode: auxiliary
+        geometric_target_gradient_dose: 0.0025
+        geometric_sinkhorn_epsilon: 0.05
+      sinkhorn_aux_e005_dose025_mismatch:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: sinkhorn
+        geometric_mode: auxiliary
+        geometric_target_gradient_dose: 0.0025
+        geometric_sinkhorn_epsilon: 0.05
+        geometric_class_mismatch_offset: 1
+      sinkhorn_aux_e005_dose050:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: sinkhorn
+        geometric_mode: auxiliary
+        geometric_target_gradient_dose: 0.005
+        geometric_sinkhorn_epsilon: 0.05
+      sinkhorn_aux_e005_dose050_mismatch:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: sinkhorn
+        geometric_mode: auxiliary
+        geometric_target_gradient_dose: 0.005
+        geometric_sinkhorn_epsilon: 0.05
+        geometric_class_mismatch_offset: 1
+      sinkhorn_aux_e005_dose100:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: sinkhorn
+        geometric_mode: auxiliary
+        geometric_target_gradient_dose: 0.01
+        geometric_sinkhorn_epsilon: 0.05
+      sinkhorn_aux_e005_dose100_mismatch:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: sinkhorn
+        geometric_mode: auxiliary
+        geometric_target_gradient_dose: 0.01
+        geometric_sinkhorn_epsilon: 0.05
+        geometric_class_mismatch_offset: 1
+      sinkhorn_aux_e010_dose025:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: sinkhorn
+        geometric_mode: auxiliary
+        geometric_target_gradient_dose: 0.0025
+        geometric_sinkhorn_epsilon: 0.1
+      sinkhorn_aux_e010_dose025_mismatch:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: sinkhorn
+        geometric_mode: auxiliary
+        geometric_target_gradient_dose: 0.0025
+        geometric_sinkhorn_epsilon: 0.1
+        geometric_class_mismatch_offset: 1
+      sinkhorn_aux_e010_dose050:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: sinkhorn
+        geometric_mode: auxiliary
+        geometric_target_gradient_dose: 0.005
+        geometric_sinkhorn_epsilon: 0.1
+      sinkhorn_aux_e010_dose050_mismatch:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: sinkhorn
+        geometric_mode: auxiliary
+        geometric_target_gradient_dose: 0.005
+        geometric_sinkhorn_epsilon: 0.1
+        geometric_class_mismatch_offset: 1
+      sinkhorn_aux_e010_dose100:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: sinkhorn
+        geometric_mode: auxiliary
+        geometric_target_gradient_dose: 0.01
+        geometric_sinkhorn_epsilon: 0.1
+      sinkhorn_aux_e010_dose100_mismatch:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: sinkhorn
+        geometric_mode: auxiliary
+        geometric_target_gradient_dose: 0.01
+        geometric_sinkhorn_epsilon: 0.1
+        geometric_class_mismatch_offset: 1
+      sinkhorn_aux_e020_dose025:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: sinkhorn
+        geometric_mode: auxiliary
+        geometric_target_gradient_dose: 0.0025
+        geometric_sinkhorn_epsilon: 0.2
+      sinkhorn_aux_e020_dose025_mismatch:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: sinkhorn
+        geometric_mode: auxiliary
+        geometric_target_gradient_dose: 0.0025
+        geometric_sinkhorn_epsilon: 0.2
+        geometric_class_mismatch_offset: 1
+      sinkhorn_aux_e020_dose050:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: sinkhorn
+        geometric_mode: auxiliary
+        geometric_target_gradient_dose: 0.005
+        geometric_sinkhorn_epsilon: 0.2
+      sinkhorn_aux_e020_dose050_mismatch:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: sinkhorn
+        geometric_mode: auxiliary
+        geometric_target_gradient_dose: 0.005
+        geometric_sinkhorn_epsilon: 0.2
+        geometric_class_mismatch_offset: 1
+      sinkhorn_aux_e020_dose100:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: sinkhorn
+        geometric_mode: auxiliary
+        geometric_target_gradient_dose: 0.01
+        geometric_sinkhorn_epsilon: 0.2
+      sinkhorn_aux_e020_dose100_mismatch:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+        use_geometric_distance: true
+        geometric_method: sinkhorn
+        geometric_mode: auxiliary
+        geometric_target_gradient_dose: 0.01
+        geometric_sinkhorn_epsilon: 0.2
+        geometric_class_mismatch_offset: 1
+  kvasirv2:
+    base: configs/base/kvasirv2.yaml
+    methods:
+      release_reference:
+        deterministic: false
+        sampling_net: true
+        frequency_mode: release_exact_256x16
+        num_freqs: 4096
+        real_sampling_mode: legacy_prefix
+        synthetic_sampling_mode: legacy_async_queue
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+      cyclic_release_u256x16:
+        sampling_net: true
+        frequency_mode: release_exact_256x16
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        synthetic_sampling_mode: legacy_async_queue
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+      fixed_u256:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 256
+        use_direction_token_ncfd: false
+      fixed_u512:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 512
+        use_direction_token_ncfd: false
+      fixed_u1024:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 1024
+        use_direction_token_ncfd: false
+      fixed_u2048:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 2048
+        use_direction_token_ncfd: false
+      fixed_u4096:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+      legacy_fixed_u4096:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: legacy_prefix
+        synthetic_sampling_mode: legacy_async_queue
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+      cyclic_fixed_u4096_legacy_syn:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        synthetic_sampling_mode: legacy_async_queue
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+      legacy_real_fixed_u4096_live_syn:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: legacy_prefix
+        synthetic_sampling_mode: synchronous_live
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: false
+      hmcf_mean_dose03:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: true
+        hmcf_mode: mean-only
+        hmcf_position_shuffle: false
+        hmcf_target_gradient_dose: 0.03
+      hmcf_std_dose03:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: true
+        hmcf_mode: std-only
+        hmcf_position_shuffle: false
+        hmcf_target_gradient_dose: 0.03
+      hmcf_mean_std_dose01:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: true
+        hmcf_mode: mean_std
+        hmcf_position_shuffle: false
+        hmcf_target_gradient_dose: 0.01
+      hmcf_mean_std_dose03:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: true
+        hmcf_mode: mean_std
+        hmcf_position_shuffle: false
+        hmcf_target_gradient_dose: 0.03
+      hmcf_mean_std_dose06:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: true
+        hmcf_mode: mean_std
+        hmcf_position_shuffle: false
+        hmcf_target_gradient_dose: 0.06
+      hmcf_mean_std_position_dose03:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: true
+        hmcf_mode: mean_std_position
+        hmcf_position_representation: moments
+        hmcf_position_shuffle: false
+        hmcf_target_gradient_dose: 0.03
+      hmcf_mean_std_position_shuffle_dose03:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        real_sampling_mode: cyclic_without_replacement
+        use_direction_token_ncfd: false
+        use_hierarchical_cf: true
+        hmcf_mode: mean_std_position
+        hmcf_position_representation: moments
+        hmcf_position_shuffle: true
+        hmcf_target_gradient_dose: 0.03
+      direction_l4_dose01:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        use_direction_token_ncfd: true
+        lambda_direction_token_ncfd: 0.022
+        token_target_gradient_dose: 0.01
+        token_diagnostic_only: false
+        token_layers:
+        - 4
+        token_layer_weights:
+        - 1.0
+        token_num_freqs: 128
+        token_radial_weight: 0.0
+        token_gradient_diag_interval: 10
+      direction_l4_dose03:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        use_direction_token_ncfd: true
+        lambda_direction_token_ncfd: 0.0661
+        token_target_gradient_dose: 0.03
+        token_diagnostic_only: false
+        token_layers:
+        - 4
+        token_layer_weights:
+        - 1.0
+        token_num_freqs: 128
+        token_radial_weight: 0.0
+        token_gradient_diag_interval: 10
+      direction_l4_dose06:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        use_direction_token_ncfd: true
+        lambda_direction_token_ncfd: 0.1321
+        token_target_gradient_dose: 0.06
+        token_diagnostic_only: false
+        token_layers:
+        - 4
+        token_layer_weights:
+        - 1.0
+        token_num_freqs: 128
+        token_radial_weight: 0.0
+        token_gradient_diag_interval: 10
+      direction_l3_dose03:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        use_direction_token_ncfd: true
+        lambda_direction_token_ncfd: 0.089
+        token_target_gradient_dose: 0.03
+        token_diagnostic_only: false
+        token_layers:
+        - 3
+        token_layer_weights:
+        - 1.0
+        token_num_freqs: 128
+        token_radial_weight: 0.0
+        token_gradient_diag_interval: 10
+      token_diag_layer0:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        use_direction_token_ncfd: true
+        lambda_direction_token_ncfd: 0.0
+        token_diagnostic_only: true
+        token_layers:
+        - 0
+        token_layer_weights:
+        - 1.0
+        token_num_freqs: 128
+        token_radial_weight: 0.0
+        token_gradient_diag_interval: 1
+      token_diag_layer1:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        use_direction_token_ncfd: true
+        lambda_direction_token_ncfd: 0.0
+        token_diagnostic_only: true
+        token_layers:
+        - 1
+        token_layer_weights:
+        - 1.0
+        token_num_freqs: 128
+        token_radial_weight: 0.0
+        token_gradient_diag_interval: 1
+      token_diag_layer2:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        use_direction_token_ncfd: true
+        lambda_direction_token_ncfd: 0.0
+        token_diagnostic_only: true
+        token_layers:
+        - 2
+        token_layer_weights:
+        - 1.0
+        token_num_freqs: 128
+        token_radial_weight: 0.0
+        token_gradient_diag_interval: 1
+      token_diag_layer3:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        use_direction_token_ncfd: true
+        lambda_direction_token_ncfd: 0.0
+        token_diagnostic_only: true
+        token_layers:
+        - 3
+        token_layer_weights:
+        - 1.0
+        token_num_freqs: 128
+        token_radial_weight: 0.0
+        token_gradient_diag_interval: 1
+      token_diag_layer4:
+        sampling_net: false
+        frequency_mode: fixed_iid_nested_unique
+        num_freqs: 4096
+        use_direction_token_ncfd: true
+        lambda_direction_token_ncfd: 0.0
+        token_diagnostic_only: true
+        token_layers:
+        - 4
+        token_layer_weights:
+        - 1.0
+        token_num_freqs: 128
+        token_radial_weight: 0.0
+        token_gradient_diag_interval: 1

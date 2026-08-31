@@ -1,0 +1,16 @@
+# PathMNIST 距离实验的项目模板；请在服务器上替换 data_dir 和输出目录。
+dataset: pathmnist
+nclass: 9
+size: 28
+nch: 3
+data_dir: /path/to/prepared/pathmnist
+ipc: 10
+iteration: 2000
+seed: 0
+geometric_method: energy
+geometric_mode: auxiliary
+geometric_target_gradient_dose: 0.0025
+geometric_sinkhorn_epsilon: 0.1
+geometric_sinkhorn_iterations: 200
+geometric_sw_projection_count: 4096
+geometric_sw_projection_seed: 1701

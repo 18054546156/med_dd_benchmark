@@ -1,0 +1,18 @@
+{
+  "scope": "PathMNIST seed0 fixed_iid_U4096 data_2000 offline audit",
+  "new_condensation_run_performed": false,
+  "test_split_used_for_selection": false,
+  "historical_k64_gradient_stable": false,
+  "exact_sw_k4096_gradient_stable": true,
+  "exact_sw_k8192_gradient_stable": true,
+  "matched_real_real_null_pass_fraction": 1.0,
+  "median_lambda005_sw_to_cf_gradient_ratio_at_k8192": 0.0020930602795330047,
+  "frozen_proxy_sw_primary_dose_mean_delta_bacc": 0.08109084765116374,
+  "frozen_proxy_sw_primary_dose_min_delta_bacc": 0.05078125,
+  "fresh_convnet_sw_mean_delta_bacc": 0.0014467593280474336,
+  "fresh_resnet18_sw_mean_delta_bacc": 0.0007233793536821992,
+  "fresh_resnet18_sw_mean_delta_macro_f1": -0.004617939392725616,
+  "sw_residual_cross_architecture_consistent": false,
+  "approve_cf_plus_sw_condensation": false,
+  "decision": "stop_static_cf_plus_sw; investigate critic_to_learner_utility_bridge before training"
+}
