@@ -2,7 +2,15 @@
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
 import torch
+
+# 允许从仓库根目录或直接用文件路径启动 demo。
+REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+if str(REPOSITORY_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPOSITORY_ROOT))
 
 from benchmark.distance_methods.cf_plus_energy import cf_plus_energy
 from benchmark.distance_methods.energy.loss import energy_distance
