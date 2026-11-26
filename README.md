@@ -4,6 +4,10 @@
 完整实验接手说明、实际诊断数据和 HPC 作业状态见
 [中文 handoff](HANDOFF_NCFM_MARGIN_CN.md)。
 
+本轮工作入口见 [24 小时计划](study_results/PLAN_20261126_CN.md)、
+[结果记录](study_results/RESULTS_20261126_CN.md)和
+[论文草稿](paper_materials/ncfm_rival_margin_draft.md)。
+
 | 目录 | 内容 |
 |---|---|
 | [adapted/ncfm](adapted/ncfm/) | NCFM 数据适配与可选的间隔损失 |

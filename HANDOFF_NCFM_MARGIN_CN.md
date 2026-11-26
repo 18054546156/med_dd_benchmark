@@ -9,6 +9,10 @@
 单卡短测，以及等待调度的正式作业。短测只有 2 次蒸馏、2 个学生 epoch，
 不能用于报告效果。
 
+本轮资料：[24 小时执行计划与实验判据](study_results/PLAN_20261126_CN.md)、
+[诊断和正式结果状态](study_results/RESULTS_20261126_CN.md)、
+[论文草稿](paper_materials/ncfm_rival_margin_draft.md)。
+
 GitHub 仓库：<https://github.com/18054546156/med_dd_benchmark>
 
 实验分支：`codex/ncfm-margin-study`，代码在该分支，没有合并到 main。
@@ -82,18 +86,19 @@ PathMNIST 的实际逐通道标准差**。2210 教师采用另一套已计算的
 | 203745 | 最终目标预计算 | COMPLETED，1 张 RTX 4090 |
 | 203721 | 三组短测 | COMPLETED |
 | 203747 | 最终竞争类选择短测 | COMPLETED |
-| 203789 | H100 并发短测 | PENDING，Priority |
-| 203793 | 9 项正式数组 | PENDING，依赖 203789 全部成功 |
-| 203810 | 汇总并尝试推送 GitHub | PENDING，依赖 203793 结束 |
+| 203789 | H100 并发短测 | 3 项 FAILED，108 节点 CUDA 设备忙或不可用 |
+| 204035 | H100 单卡顺序短测 | COMPLETED，0:0，112 节点 H100 NVL，3 分 13 秒 |
+| 203793 | 9 项正式数组 | PENDING，Priority，依赖已满足，最多 3 卡并发 |
+| 204052 | 核验、汇总并推送 | PENDING，依赖 203793 结束 |
 
 使用 Windows SSH 别名：
 
 ```bash
 ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=3 luhpc
-squeue -j 203789,203793,203810 -o "%.18i %.10T %.10M %.30R"
-sacct -j 203789,203793,203810 -n -P --format=JobID,State,Elapsed,NodeList
+squeue -j 204035,203793,204052 -o "%.18i %.10T %.10M %.30R"
+sacct -j 204035,203793,204052 -n -P --format=JobID,State,Elapsed,NodeList
 cd /project/prj-sis01/xuxiaoyu/NCFM_Research/experiments/margin_study_20261126/code
-ls -lh logs/margin-203789* logs/margin-203793* logs/margin-collect-203810* 2>/dev/null
+ls -lh logs/margin-smoke-204035* logs/margin-203793* logs/margin-collect-204052* 2>/dev/null
 tail -f logs/margin-203793_0.out
 ```
 
@@ -103,12 +108,21 @@ tail -f logs/margin-203793_0.out
 `study_results/diagnostics/margin_targets_metadata.json`。数据集和模型权重
 保留在 HPC，不提交到 GitHub。
 
-收集任务会读取实际完成的 `evaluation.json`，把缺失项标为 missing，
-写入 GitHub 分支的 `study_results/margin_20261126/` 并尝试推送。
-**尚未验证该自动推送成功**，作业结束后必须检查
-`logs/margin-collect-203810.err`、`sacct` 和远端分支。如果 H100 短测失败，
-正式数组可能显示 `DependencyNeverSatisfied`，需要核查后处理；不能把排队
-或失败作业当成实验结果。
+收集任务先查 Slurm 退出状态，并根据 9 类测试混淆矩阵复算 ACC/BACC，
+再按蒸馏种子生成两组配对差。HPC 汇总目录为
+`outputs/collected_203793_204052/`，自动推送目标为 GitHub 分支的
+`study_results/margin_20261126/`。推送待执行，可通过
+`logs/margin-collect-204052.err` 和远端分支核实。
+旧汇总任务 203810 已由 204052 替换。若 H100 短测失败，正式数组会出现
+`DependencyNeverSatisfied`，需先根据日志判断硬件分配与训练栈。
+
+正式训练沿用 `98dc0cb` 的运行脚本，HPC 脚本 SHA256 为
+`bed7a1a04e2e4f5aa7aedfb2174e7d769b7f55e355984efc60d17f753d59575c`。
+收集作业的 Slurm 脚本 SHA256 为
+`60e0466ed82422931cbd12e1572bc8bc15022c5e126a2d2a99d7f5eb88595017`。
+204035 的三组短测产物位于 `outputs/smoke_h100_204035/`，每组均有
+`data_2.pt` 和 `evaluation.json`。H100 108 继续排除。当前 Slurm
+预估 203793 最早于 2026-12-01 08:47 启动，实际时间可能变化。
 
 ## 已知故障与保留的现场
 
@@ -127,9 +141,8 @@ tail -f logs/margin-203793_0.out
 
 ## 下一步
 
-1. 等待并检查 203789：三组的 GPU、显存、蒸馏、评估和退出码是否都正常。
-2. 若通过，核验 203793 实际开始、三组日志、loss 和各自 `evaluation.json`。
-3. 结束后按**三个蒸馏种子**比较每个种子的 5 次学生平均结果，再报告均值
+1. 核验 203793 实际开始、三组日志、loss 和各自 `evaluation.json`。
+2. 结束后按**三个蒸馏种子**比较每个种子的 5 次学生平均结果，再报告均值
    与跨种子波动。若只有部分完成，明确标记，不得补造。
-4. 若出现改进，再用不同网络或独立教师和 Kvasir 验证；当前尚未运行这些
+3. 若出现改进，再用不同网络或独立教师和 Kvasir 验证。当前尚未运行这些
    泛化实验，也没有结果支持已超越原方法。

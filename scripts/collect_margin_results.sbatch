@@ -14,11 +14,15 @@ set -Eeuo pipefail
 : "${STUDY_ROOT:?}" "${PARENT_JOB:?}"
 cd "$STUDY_ROOT"
 export GIT_TERMINAL_PROMPT=0 OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1
-repo="$STUDY_ROOT/collector_repo"
+report="$STUDY_ROOT/outputs/collected_${PARENT_JOB}_${SLURM_JOB_ID}"
+/home/xiaoyuxu2/.conda/envs/hopbench-cu128/bin/python scripts/collect_margin_results.py \
+    --study-root "$STUDY_ROOT" --job-id "$PARENT_JOB" --run-tag "${NCFM_RUN_TAG:-formal}" --out "$report"
+
+repo="$STUDY_ROOT/collector_repo_${SLURM_JOB_ID}"
 git clone --single-branch --branch codex/ncfm-margin-study \
     https://github.com/18054546156/med_dd_benchmark.git "$repo"
-/home/xiaoyuxu2/.conda/envs/hopbench-cu128/bin/python scripts/collect_margin_results.py \
-    --study-root "$STUDY_ROOT" --job-id "$PARENT_JOB" --run-tag "${NCFM_RUN_TAG:-formal}" --out "$repo/study_results/margin_20261126"
+mkdir -p "$repo/study_results/margin_20261126"
+cp "$report"/*.json "$repo/study_results/margin_20261126/"
 git -C "$repo" add study_results/margin_20261126
 git -C "$repo" -c user.name='xiaoyu xu' -c user.email='937872199@qq.com' \
     commit -m 'Record NCFM angular margin experiment results'
