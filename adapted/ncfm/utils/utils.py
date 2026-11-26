@@ -445,7 +445,7 @@ def get_loader(args):
             size=args.size,
             nclass=args.nclass,
             load_memory=args.load_memory,
-            evaluation_split="test",
+            evaluation_split=getattr(args, "evaluation_split", "test"),
         )
         val_sampler = DistributedSampler(
             val_dataset, num_replicas=args.world_size, rank=args.rank

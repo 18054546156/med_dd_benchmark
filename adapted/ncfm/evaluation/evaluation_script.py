@@ -1,6 +1,13 @@
 def main_work(args):
 
+    strict_eval = os.environ.get("NCFM_VALIDATION_SELECT") == "1"
+    if strict_eval:
+        args.evaluation_split = "val"
     _, val_loader = get_loader(args)
+    test_loader = None
+    if strict_eval:
+        args.evaluation_split = "test"
+        _, test_loader = get_loader(args)
 
     synset = Condenser(
         args,
@@ -20,7 +27,7 @@ def main_work(args):
 
     syndataloader = synset.get_syndataLoader(args, args.augment)
 
-    synset.evaluate(args, syndataloader, val_loader)
+    synset.evaluate(args, syndataloader, val_loader, test_loader=test_loader)
     dist.destroy_process_group()
 
 

@@ -1,5 +1,6 @@
 """Write an isolated, fully specified PathMNIST experiment configuration."""
 import argparse
+import os
 from pathlib import Path
 import yaml
 
@@ -19,4 +20,8 @@ config["save_path"]["pretrain_dir"] = a.teacher_dir
 config["save_path"]["pretrain_dir_is_final"] = True
 config["save_path"]["save_dir"] = str(a.out_root)
 config["distibution_train"]["workers"] = 4
+if os.environ.get("NCFM_SMOKE") == "1":
+    config["condense"]["niter"] = 2
+    config["train"]["evaluation_epochs"] = 2
+    config["train"]["epoch_eval_interval"] = 1
 (a.out_root/"config.yaml").write_text(yaml.safe_dump(config,sort_keys=False),encoding="utf8")

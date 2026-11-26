@@ -101,7 +101,7 @@ def init_script(args):
 
 def set_iteration_parameters(niter, debug):
 
-    it_save = np.arange(0, niter + 1, 1000).tolist()
+    it_save = sorted(set(np.arange(0, niter + 1, 1000).tolist() + [niter]))
     it_log = 1 if debug else 20
     return it_save, it_log
 

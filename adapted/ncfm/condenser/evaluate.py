@@ -24,7 +24,7 @@ def SoftCrossEntropy(inputs, target, temperature=1.0, reduction="average"):
 
 
 # loss_function_kl = nn.KLDivLoss(reduction="batchmean")
-def evaluate_syn_data(args, model, train_loader, val_loader, logger=None):
+def evaluate_syn_data(args, model, train_loader, val_loader, logger=None, test_loader=None):
     if args.softlabel:
         teacher_model = define_model(
             args.dataset,
@@ -65,7 +65,8 @@ def evaluate_syn_data(args, model, train_loader, val_loader, logger=None):
     # scheduler = optim.lr_scheduler.MultiStepLR(
     #     optimizer, milestones=[args.evaluation_epochs//2], gamma=0.1)
 
-    best_acc1, best_acc5 = 0, 0
+    best_acc1, best_acc5 = -1, 0
+    best_state, best_epoch = None, None
     acc1, acc5 = 0, 0
     model = model.to(args.device)
     if torch.cuda.is_available():
@@ -138,6 +139,9 @@ def evaluate_syn_data(args, model, train_loader, val_loader, logger=None):
             if is_best:
                 best_acc1 = acc1
                 best_acc5 = acc5
+                if test_loader is not None:
+                    best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
+                    best_epoch = epoch
             if logger is not None and args.rank == 0:
                 logger(
                     "-------Eval Training Epoch [{} / {}] INFO--------".format(
@@ -153,4 +157,21 @@ def evaluate_syn_data(args, model, train_loader, val_loader, logger=None):
 
         scheduler.step()
 
+    if test_loader is not None:
+        model.load_state_dict(best_state)
+        model.eval()
+        confusion = torch.zeros((args.nclass,args.nclass),dtype=torch.long,device=args.device)
+        with torch.no_grad():
+            for images, labels in test_loader:
+                images, labels = images.to(args.device), labels.to(args.device).long().reshape(-1)
+                predictions = model(images).argmax(1)
+                confusion += torch.bincount(labels*args.nclass+predictions,
+                                             minlength=args.nclass**2).reshape(args.nclass,args.nclass)
+        dist.all_reduce(confusion)
+        recall = confusion.diag().float()/confusion.sum(1).clamp_min(1)
+        metrics = {"validation_best_accuracy":float(best_acc1), "selected_epoch":best_epoch,
+                   "test_accuracy":float(confusion.diag().sum()/confusion.sum()*100),
+                   "test_bacc":float(recall.mean()*100), "class_recall":recall.cpu().tolist(),
+                   "confusion":confusion.cpu().tolist()}
+        return best_acc1, acc1, metrics
     return best_acc1, acc1

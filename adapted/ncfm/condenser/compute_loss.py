@@ -21,6 +21,7 @@ def compute_match_loss(
 
     loss_total = 0
     match_grad_mean = 0
+    args.margin_loss_sum = 0.0
 
     for c in class_list:
         timing_tracker.start_step()
@@ -39,6 +40,7 @@ def compute_match_loss(
             std = img_syn.new_tensor(STDS[args.dataset])[None, :, None, None]
             margin = margin_loss(model_final, (img_syn - mean) / std, int(c),
                                  args.margin_teacher_id, margin_targets, margin_mode)
+            args.margin_loss_sum += float(margin.detach())
             loss = loss + margin_weight * margin
         loss_total += loss.item()
         timing_tracker.record("loss")

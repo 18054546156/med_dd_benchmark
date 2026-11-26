@@ -43,19 +43,23 @@ def main(a):
         hashes.append(sha(path))
         state = torch.load(path, map_location=device, weights_only=True)
         model.load_state_dict({k.removeprefix("module."):v for k,v in state.items()})
-        outputs = []
+        outputs, logit_outputs = [], []
         for batch in x.split(a.batch):
             batch = F.interpolate(batch.to(device), (32,32), mode="bicubic",
                                   align_corners=False, antialias=True).clamp(0,1)
-            _, features = model((batch-mean)/std, return_features=True)
+            logits, features = model((batch-mean)/std, return_features=True)
             outputs.append(F.normalize(features, dim=1) @ F.normalize(model.classifier.weight, dim=1).T)
+            logit_outputs.append(logits)
         scores = torch.cat(outputs)
+        logits = torch.cat(logit_outputs)
         teacher_rivals, teacher_pairs, teacher_overall = [], [], []
         for c in range(9):
             s = scores[torch.from_numpy(classes == c).to(device)]
             other = s.clone()
             other[:,c] = -torch.inf
-            ids = torch.bincount(other.argmax(1), minlength=9).topk(2).indices
+            other_logits = logits[torch.from_numpy(classes == c).to(device)].clone()
+            other_logits[:,c] = -torch.inf
+            ids = torch.bincount(other_logits.argmax(1), minlength=9).topk(2).indices
             teacher_rivals.append(ids.cpu().numpy())
             teacher_pairs.append(torch.quantile(s[:,c,None]-s[:,ids],qs,dim=0).cpu().numpy())
             teacher_overall.append(torch.quantile(s[:,c]-other.max(1).values,qs).cpu().numpy())

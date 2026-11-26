@@ -212,12 +212,12 @@ class Condenser:
             model_final.requires_grad_(False)
         if args.sampling_net:
             scheduler_sampling_net = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optim_sampling_net, mode="min", factor=0.5, patience=500, verbose=False
+            optim_sampling_net, mode="min", factor=0.5, patience=500
         )
         else:
             scheduler_sampling_net = None
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optim_img, mode="min", factor=0.5, patience=500, verbose=False
+            optim_img, mode="min", factor=0.5, patience=500
         )
         gather_save_visualize(self, args)
         if args.local_rank == 0:
@@ -295,6 +295,9 @@ class Condenser:
                 timing_stats = self.timing_tracker.report(reset=True)
                 current_lr = optim_img.param_groups[0]["lr"]
                 plotter.plot_and_save_loss_curve()
+                if margin_targets is not None:
+                    args.logger(f"margin_mode={margin_mode} margin_weight={margin_weight} "
+                                f"unweighted_margin_loss={args.margin_loss_sum / len(args.class_list):.8f}")
                 if args.iter_calib > 0:
                     args.logger(
                         f"\n{get_time()} (Iter {it:3d}) "
@@ -318,11 +321,12 @@ class Condenser:
             if scheduler_sampling_net is not None:
                 scheduler_sampling_net.step(current_loss)
 
-    def evaluate(self, args, syndataloader, val_loader):
+    def evaluate(self, args, syndataloader, val_loader, test_loader=None):
         if args.rank == 0:
             args.logger("======================Start Evaluation ======================")
         results = []
         all_best_acc = 0
+        strict_results = []
         for i in range(args.val_repeat):
             if args.rank == 0:
                 args.logger(
@@ -339,9 +343,15 @@ class Condenser:
                 args.logger,
                 args.size,
             ).to(args.device)
-            best_acc, acc = evaluate_syn_data(
-                args, model, syndataloader, val_loader, logger=args.logger
+            result = evaluate_syn_data(
+                args, model, syndataloader, val_loader, logger=args.logger,
+                test_loader=test_loader
             )
+            if test_loader is not None:
+                best_acc, acc, strict_metrics = result
+                strict_results.append(strict_metrics)
+            else:
+                best_acc, acc = result
             if all_best_acc < best_acc:
                 all_best_acc = best_acc
             results.append(best_acc)
@@ -352,6 +362,10 @@ class Condenser:
         mean_result = np.mean(results)
         std_result = np.std(results)
         if args.rank == 0:
+            if test_loader is not None:
+                import json, os
+                with open(os.environ["NCFM_METRICS_PATH"], "w") as f:
+                    json.dump(strict_results, f, indent=2)
             args.logger("=" * 50)
             args.logger(f"Evaluation Stop:")
             args.logger(
