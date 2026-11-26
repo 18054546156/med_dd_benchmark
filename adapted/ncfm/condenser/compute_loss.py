@@ -1,4 +1,6 @@
 import torch
+from NCFM.margin_matching import margin_loss
+from data.dataset_statistics import MEANS, STDS
 
 
 def compute_match_loss(
@@ -13,7 +15,8 @@ def compute_match_loss(
     model_interval,
     data_grad,
     optim_sampling_net = None,
-    sampling_net =None
+    sampling_net =None,
+    model_final=None, margin_targets=None, margin_mode="off", margin_weight=0.0,
 ):
 
     loss_total = 0
@@ -31,6 +34,12 @@ def compute_match_loss(
         n = img.shape[0]
 
         loss = inner_loss_fn(img_aug[:n], img_aug[n:], model_interval,sampling_net,args)
+        if margin_targets is not None:
+            mean = img_syn.new_tensor(MEANS[args.dataset])[None, :, None, None]
+            std = img_syn.new_tensor(STDS[args.dataset])[None, :, None, None]
+            margin = margin_loss(model_final, (img_syn - mean) / std, int(c),
+                                 args.margin_teacher_id, margin_targets, margin_mode)
+            loss = loss + margin_weight * margin
         loss_total += loss.item()
         timing_tracker.record("loss")
 

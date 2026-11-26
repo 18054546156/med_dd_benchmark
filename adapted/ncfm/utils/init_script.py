@@ -46,7 +46,7 @@ def init_script(args):
 
     args.it_save, args.it_log = set_iteration_parameters(args.niter, args.debug)
 
-    args.pretrain_dir = set_Pretrain_Directory(
+    args.pretrain_dir = args.pretrain_dir if getattr(args, "pretrain_dir_is_final", False) else set_Pretrain_Directory(
         args.pretrain_dir,
         args.dataset,
         args.depth,

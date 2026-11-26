@@ -95,10 +95,13 @@ def _load_medical_dataset(dataset, data_dir, size, evaluation_split="val"):
     # 统一工具负责固定尺寸、标签标量化和 prepared 路径解析。
     # skip_normalize=True: NCFM 的 diffaug 会在训练时做 Normalize，避免重复归一化
     splits = load_medical_splits(spec_name, data_dir, skip_normalize=True)
+    eval_splits = load_medical_splits(spec_name, data_dir, skip_normalize=False)
+    MEANS[dataset] = list(spec["mean"])
+    STDS[dataset] = list(spec["std"])
     train_dataset = splits["train"]
     if evaluation_split not in {"val", "test"}:
         raise ValueError(f"不支持的医疗评估 split: {evaluation_split}")
-    val_dataset = splits[evaluation_split]
+    val_dataset = eval_splits[evaluation_split]
 
     return (
         _attach_dataset_metadata(train_dataset, spec["num_classes"]),
@@ -525,6 +528,7 @@ def update_feature_extractor(args, model_init, model_final, model_interval, a=0,
     if args.num_premodel > 0:
         # Select pre-trained model ID
         slkt_model_id = random.randint(0, args.num_premodel - 1)
+        args.margin_teacher_id = slkt_model_id
 
         # Construct the paths
         init_path = os.path.join(

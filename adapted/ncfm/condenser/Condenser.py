@@ -7,6 +7,7 @@ from utils.utils import update_feature_extractor
 from utils.ddp import gather_save_visualize, sync_distributed_metric
 from NCFM.NCFM import match_loss, cailb_loss, mutil_layer_match_loss, CFLossFunc
 from NCFM.SampleNet import SampleNet
+from NCFM.margin_matching import load_targets
 from utils.experiment_tracker import TimingTracker, get_time
 from data.dataset import TensorDataset
 from utils.utils import define_model
@@ -206,6 +207,9 @@ class Condenser:
         args.cf_loss_func = CFLossFunc(
             alpha_for_loss=args.alpha_for_loss, beta_for_loss=args.beta_for_loss
         )
+        margin_targets, margin_mode, margin_weight = load_targets(args.device)
+        if margin_targets is not None:
+            model_final.requires_grad_(False)
         if args.sampling_net:
             scheduler_sampling_net = torch.optim.lr_scheduler.ReduceLROnPlateau(
             optim_sampling_net, mode="min", factor=0.5, patience=500, verbose=False
@@ -242,7 +246,9 @@ class Condenser:
                 model_interval=model_interval,
                 data_grad=self.data.grad,
                 optim_sampling_net=optim_sampling_net,
-                sampling_net =sampling_net
+                sampling_net=sampling_net,
+                model_final=model_final, margin_targets=margin_targets,
+                margin_mode=margin_mode, margin_weight=margin_weight
             )
             if args.iter_calib > 0:
                 calib_loss_total, calib_grad_mean = compute_calib_loss(
