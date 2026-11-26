@@ -33,3 +33,21 @@ Existing normalization choices are retained to reproduce the 26479 bank,
 not claimed to be the actual per-channel standard deviations.
 
 Only GPU jobs and results actually recorded separately count as experiments.
+
+## Recorded execution
+
+- Targets: job 203745, completed using one RTX 4090. Each teacher used the
+  same 512 training examples per class, seed 7341. The v2 targets select
+  rivals using logits and compute angular-margin quantiles.
+- Smoke: job 203721, all three arms completed with two distillation iterations
+  and two student epochs. Job 203747 additionally verified the v2 targets.
+  Smoke accuracies do not measure method performance.
+- The first parallel launch (203749) failed: the old entry point overwrote
+  Slurm's assigned CUDA_VISIBLE_DEVICES and all tasks selected device 0.
+  The entry points now preserve Slurm's allocation. Jobs 203762, 203781 and
+  203785 exposed Slurm-visible 4090 devices with low actual free memory;
+  the guard rejected those devices. One job on 203762 stalled and was canceled.
+- H100 smoke job 203789 gates the formal array 203793. The array has 3 arms,
+  3 seeds per arm, 20,000 distillation steps, and 5 validation-selected
+  2,000-epoch evaluations per run. Job 203810 collects completed metrics and
+  attempts a GitHub push after the array finishes. These are queued, not results.
