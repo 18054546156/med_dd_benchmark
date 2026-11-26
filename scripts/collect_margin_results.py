@@ -10,14 +10,15 @@ p = argparse.ArgumentParser()
 p.add_argument("--study-root", type=Path, required=True)
 p.add_argument("--out", type=Path, required=True)
 p.add_argument("--job-id", required=True)
+p.add_argument("--run-tag", default="formal")
 a = p.parse_args()
 a.out.mkdir(parents=True, exist_ok=True)
-summary = {"job_id":a.job_id,"training_steps":20000,"eval_epochs":2000,
+summary = {"job_id":a.job_id,"run_tag":a.run_tag,"training_steps":20000,"eval_epochs":2000,
            "expected_seeds":[0,1,2],"expected_repeats":5,"methods":{}}
 for method in ("off","overall","rival"):
     rows=[]
     for seed in range(3):
-        f=a.study_root/"outputs"/"formal"/method/f"seed{seed}"/"evaluation.json"
+        f=a.study_root/"outputs"/a.run_tag/method/f"seed{seed}"/"evaluation.json"
         if not f.exists():
             rows.append({"seed":seed,"status":"missing"})
             continue
