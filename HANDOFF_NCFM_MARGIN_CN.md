@@ -1,0 +1,135 @@
+# NCFM 类间间隔实验交接
+
+更新：2026-11-26，Asia/Shanghai。这里的任务是研究 PathMNIST IPC=10
+的合成数据能否更好地覆盖易混类别，保留原始 NCFM 作为对照。
+
+## 一眼看懂目前状态
+
+**没有正式的新算法测试 ACC/BACC。** 已有冻结教师诊断、训练目标预计算、
+单卡短测，以及等待调度的正式作业。短测只有 2 次蒸馏、2 个学生 epoch，
+不能用于报告效果。
+
+GitHub 仓库：<https://github.com/18054546156/med_dd_benchmark>
+
+实验分支：`codex/ncfm-margin-study`，代码在该分支，没有合并到 main。
+本地工作树：`C:/Users/Administrator/Documents/project/ncfm_margin_study`。
+HPC 已部署代码和产物的目录：
+
+```text
+/project/prj-sis01/xuxiaoyu/NCFM_Research/experiments/margin_study_20261126/code
+```
+
+## 现有实验发现
+
+两份已完成的 PathMNIST 合成集在未使用对应教师库的教师上评估。
+两组 20 个教师 checkpoint 的文件 SHA256 无交集，但这一点不能证明它们的
+训练随机种子或模型来源完全独立。
+
+| 被评估 DD | 留出教师的真实样本角度间隔低分位 | 留出教师的 DD 角度间隔低分位 |
+|---|---:|---:|
+| 26479_0 | 0.0537 | 0.0731 |
+| 2210 | 0.0437 | 0.0692 |
+
+表中为每类第 10 百分位再对 9 类取平均，是真实训练图和 DD 的教师特征
+诊断，**不是测试 ACC**。同类最近邻余弦距离总体相近。采样为每类 192 张
+真实查询、8 组每类 40 张真实参照，并与每类 40 个 DD 解码视图比较。
+原始逐类数据分别在 `scripts/coverage_teacher_fixedstats.json` 和
+`scripts/coverage_results.json`；脚本是 `scripts/coverage_probe.py`。
+
+之前的纹理连续性实验中，真实图经过 factor=2 裁切放大后，平均连续概率
+变化 5.21 个百分点；两个 DD 解码视图与真实原图的差距约 1.38、1.37
+个百分点。它说明解码是重要混杂因素，不能据此证明连续性损失能提升 ACC。
+逐类结果和索引在 `study_results/diagnostics/`。
+
+## 方法和公平对照
+
+三组都使用 NCFM CF loss，保存 9 类×10 张 `32×32` 画布。原版
+`factor=2` 将其解码成每类 40 个视图，共 360 个。这是存储 IPC=10，
+学生实际视图 IPC=40；比较时不要混同。
+
+| 模式 | 配置值 | 改动 |
+|---|---|---|
+| 原版对照 | `NCFM_MARGIN_MODE=off` | 无额外间隔损失 |
+| 整体间隔 | `overall` | 匹配正确类和最强竞争类的角度间隔分位数 |
+| 竞争类别 | `rival` | 每类按真实训练图的 logits 找两个竞争类，分别匹配角度间隔分位数 |
+
+预计算目标在每位冻结教师下使用每类 512 张真实训练图，随机种子 7341，
+分位数为 10%、25%、50%。优化时额外损失权重为 100，是**尚未调优的探索值**。
+目标张量经解码器对合成画布反向传播，教师参数冻结。
+
+正式配置为每组 3 个蒸馏种子、20,000 次蒸馏，每份合成集进行 5 次
+学生训练，每次 2,000 epoch。使用验证集选 epoch，随后测试集计算 ACC、
+BACC、逐类召回和混淆矩阵；超参数不能根据测试结果挑选。
+实现不改写旧实验目录，`off` 分支可直接运行。代码入口：
+
+- `adapted/ncfm/NCFM/margin_matching.py`：辅助损失。
+- `adapted/ncfm/condenser/compute_loss.py`：结合原 CF loss。
+- `scripts/precompute_margin_targets.py`：从训练集预计算目标。
+- `scripts/margin_run.sbatch`、`scripts/write_margin_config.py`：正式任务和配置。
+- `scripts/collect_margin_results.py`：按蒸馏种子汇总，不把 5 次学生初始化当成 5 个蒸馏种子。
+
+目标采用旧 26479 教师库当时的 mean `[0.741, 0.533, 0.706]`、std
+`[0.402, 0.821, 0.407]`，用于保持教师输入一致；**这不应称为
+PathMNIST 的实际逐通道标准差**。2210 教师采用另一套已计算的训练集统计。
+跨教师诊断分别使用对应标准化。正式方法只用 26479 教师库。
+
+## 任务状态和接手命令
+
+下表是上述更新时间的快照，不代表实时状态。
+
+| 作业 | 作用 | 快照 |
+|---|---|---|
+| 203745 | 最终目标预计算 | COMPLETED，1 张 RTX 4090 |
+| 203721 | 三组短测 | COMPLETED |
+| 203747 | 最终竞争类选择短测 | COMPLETED |
+| 203789 | H100 并发短测 | PENDING，Priority |
+| 203793 | 9 项正式数组 | PENDING，依赖 203789 全部成功 |
+| 203810 | 汇总并尝试推送 GitHub | PENDING，依赖 203793 结束 |
+
+使用 Windows SSH 别名：
+
+```bash
+ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=3 luhpc
+squeue -j 203789,203793,203810 -o "%.18i %.10T %.10M %.30R"
+sacct -j 203789,203793,203810 -n -P --format=JobID,State,Elapsed,NodeList
+cd /project/prj-sis01/xuxiaoyu/NCFM_Research/experiments/margin_study_20261126/code
+ls -lh logs/margin-203789* logs/margin-203793* logs/margin-collect-203810* 2>/dev/null
+tail -f logs/margin-203793_0.out
+```
+
+正式结果预期在 `outputs/formal_h100/{off,overall,rival}/seed{0,1,2}/`；
+每项包含运行配置、蒸馏产物及 `evaluation.json`。目标文件在
+`outputs/margin_targets_logits_v2.npz`；对应元数据已纳入本仓库
+`study_results/diagnostics/margin_targets_metadata.json`。数据集和模型权重
+保留在 HPC，不提交到 GitHub。
+
+收集任务会读取实际完成的 `evaluation.json`，把缺失项标为 missing，
+写入 GitHub 分支的 `study_results/margin_20261126/` 并尝试推送。
+**尚未验证该自动推送成功**，作业结束后必须检查
+`logs/margin-collect-203810.err`、`sacct` 和远端分支。如果 H100 短测失败，
+正式数组可能显示 `DependencyNeverSatisfied`，需要核查后处理；不能把排队
+或失败作业当成实验结果。
+
+## 已知故障与保留的现场
+
+- `meddd` 当前 PyTorch 为 CUDA 13 构建，4090 节点驱动不兼容。当前脚本
+  改用已有的 `/home/xiaoyuxu2/.conda/envs/hopbench-cu128/bin/python`。
+- 原入口曾覆盖 Slurm 的 `CUDA_VISIBLE_DEVICES`，多任务挤到同一 GPU。
+  当前代码只在环境未设置时使用命令行 GPU 参数。
+- 作业 203749 的 9 项因此失败，结果目录 `outputs/formal/` 只含失败运行
+  的配置，不是正式结果；新数组使用 `outputs/formal_h100/`。
+- 4090 节点的 Slurm 空闲卡存在其他 GPU 进程占用。脚本检查实测空闲显存
+  至少 18 GiB，未通过即退出。203762 的一项卡住后已停止。不要解除保护
+  或修改其他人的任务。
+- 原始 `26128_0` 合成文件暂未在已检查的 HPC 归档中找到；本研究使用
+  26479_0 和 2210 两份已核验哈希的产物，不能将其混称为历史 78.09% 的
+  同一份合成集。
+
+## 下一步
+
+1. 等待并检查 203789：三组的 GPU、显存、蒸馏、评估和退出码是否都正常。
+2. 若通过，核验 203793 实际开始、三组日志、loss 和各自 `evaluation.json`。
+3. 结束后按**三个蒸馏种子**比较每个种子的 5 次学生平均结果，再报告均值
+   与跨种子波动。若只有部分完成，明确标记，不得补造。
+4. 若出现改进，再用不同网络或独立教师和 Kvasir 验证；当前尚未运行这些
+   泛化实验，也没有结果支持已超越原方法。
