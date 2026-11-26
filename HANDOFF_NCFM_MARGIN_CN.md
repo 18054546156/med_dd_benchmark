@@ -1,13 +1,13 @@
 # NCFM 类间间隔实验交接
 
-更新：2026-11-26，Asia/Shanghai。这里的任务是研究 PathMNIST IPC=10
+更新日期为 2026-11-27（Asia/Shanghai）。这里的任务是研究 PathMNIST IPC=10
 的合成数据能否更好地覆盖易混类别，保留原始 NCFM 作为对照。
 
 ## 一眼看懂目前状态
 
-**没有正式的新算法测试 ACC/BACC。** 已有冻结教师诊断、训练目标预计算、
-单卡短测，以及等待调度的正式作业。短测只有 2 次蒸馏、2 个学生 epoch，
-不能用于报告效果。
+**正式评估 9/9 已完成。** NCFM 对照、整体间隔匹配、竞争类别间隔匹配的
+测试 ACC 分别为 49.97%、47.44%、48.59%。竞争类别匹配相对 NCFM 的
+配对 ACC 差为 −1.39 pp。每组包含 3 个蒸馏种子和每种子 5 次学生评估。
 
 本轮资料：[24 小时执行计划与实验判据](study_results/PLAN_20261126_CN.md)、
 [诊断和正式结果状态](study_results/RESULTS_20261126_CN.md)、
@@ -88,41 +88,40 @@ PathMNIST 的实际逐通道标准差**。2210 教师采用另一套已计算的
 | 203747 | 最终竞争类选择短测 | COMPLETED |
 | 203789 | H100 并发短测 | 3 项 FAILED，108 节点 CUDA 设备忙或不可用 |
 | 204035 | H100 单卡顺序短测 | COMPLETED，0:0，112 节点 H100 NVL，3 分 13 秒 |
-| 203793 | 9 项正式数组 | PENDING，Priority，依赖已满足，最多 3 卡并发 |
-| 204052 | 核验、汇总并推送 | PENDING，依赖 203793 结束 |
+| 203793 | 9 项正式数组 | 全部 COMPLETED，0:0，11 月 27 日 00:47 至 03:58 |
+| 204052 | 核验、汇总并推送 | FAILED，计算节点账务查询失败，推送返回 403 |
 
 使用 Windows SSH 别名：
 
 ```bash
 ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=3 luhpc
-squeue -j 204035,203793,204052 -o "%.18i %.10T %.10M %.30R"
 sacct -j 204035,203793,204052 -n -P --format=JobID,State,Elapsed,NodeList
 cd /project/prj-sis01/xuxiaoyu/NCFM_Research/experiments/margin_study_20261126/code
 ls -lh logs/margin-smoke-204035* logs/margin-203793* logs/margin-collect-204052* 2>/dev/null
-tail -f logs/margin-203793_0.out
+less outputs/collected_203793_login_20261127/summary.json
 ```
 
-正式结果预期在 `outputs/formal_h100/{off,overall,rival}/seed{0,1,2}/`；
+正式结果在 `outputs/formal_h100/{off,overall,rival}/seed{0,1,2}/`，
 每项包含运行配置、蒸馏产物及 `evaluation.json`。目标文件在
 `outputs/margin_targets_logits_v2.npz`；对应元数据已纳入本仓库
 `study_results/diagnostics/margin_targets_metadata.json`。数据集和模型权重
 保留在 HPC，不提交到 GitHub。
 
 收集任务先查 Slurm 退出状态，并根据 9 类测试混淆矩阵复算 ACC/BACC，
-再按蒸馏种子生成两组配对差。HPC 汇总目录为
-`outputs/collected_203793_204052/`，自动推送目标为 GitHub 分支的
-`study_results/margin_20261126/`。推送待执行，可通过
-`logs/margin-collect-204052.err` 和远端分支核实。
-旧汇总任务 203810 已由 204052 替换。若 H100 短测失败，正式数组会出现
-`DependencyNeverSatisfied`，需先根据日志判断硬件分配与训练栈。
+再按蒸馏种子生成两组配对差。204052 的故障日志仍在
+`logs/margin-collect-204052.err`，成功重算的 HPC 汇总目录为
+`outputs/collected_203793_login_20261127/`。登录节点能查询正常账务，
+九份结果已归档至 [GitHub 分支的正式实验目录](study_results/margin_20261126/)。
+新版收集器可读取从登录节点导出的 `sacct` 快照，并在账务不可用、
+结果未全部验证或 GitHub 拒绝权限时以失败状态退出。
 
 正式训练沿用 `98dc0cb` 的运行脚本，HPC 脚本 SHA256 为
 `bed7a1a04e2e4f5aa7aedfb2174e7d769b7f55e355984efc60d17f753d59575c`。
-收集作业的 Slurm 脚本 SHA256 为
+旧收集作业 204052 的 Slurm 脚本 SHA256 为
 `60e0466ed82422931cbd12e1572bc8bc15022c5e126a2d2a99d7f5eb88595017`。
 204035 的三组短测产物位于 `outputs/smoke_h100_204035/`，每组均有
-`data_2.pt` 和 `evaluation.json`。H100 108 继续排除。当前 Slurm
-预估 203793 最早于 2026-12-01 08:47 启动，实际时间可能变化。
+`data_2.pt` 和 `evaluation.json`。203793 在 H100 NVL 节点
+`hpcgpu111` 和 `hpcgpu112` 运行，单项用时 53 至 58 分钟。
 
 ## 已知故障与保留的现场
 
@@ -141,8 +140,6 @@ tail -f logs/margin-203793_0.out
 
 ## 下一步
 
-1. 核验 203793 实际开始、三组日志、loss 和各自 `evaluation.json`。
-2. 结束后按**三个蒸馏种子**比较每个种子的 5 次学生平均结果，再报告均值
-   与跨种子波动。若只有部分完成，明确标记，不得补造。
-3. 若出现改进，再用不同网络或独立教师和 Kvasir 验证。当前尚未运行这些
-   泛化实验，也没有结果支持已超越原方法。
+1. 确认本次 NCFM 对照与历史 `26479_0` 的预处理、学生评估配置及选模差异。
+2. 当前权重 100 的两组辅助目标均低于 NCFM 对照。按既定判据，
+   权重 100 的方案停止进入独立确认实验。

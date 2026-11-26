@@ -1,0 +1,187 @@
+{
+  "job_id": "203793",
+  "run_tag": "formal_h100",
+  "training_steps": 20000,
+  "eval_epochs": 2000,
+  "expected_seeds": [
+    0,
+    1,
+    2
+  ],
+  "expected_repeats": 5,
+  "sacct": [
+    "203793_0|COMPLETED|0:0|00:56:14|hpcgpu112",
+    "203793_1|COMPLETED|0:0|00:55:00|hpcgpu112",
+    "203793_2|COMPLETED|0:0|00:53:20|hpcgpu111",
+    "203793_3|COMPLETED|0:0|00:57:55|hpcgpu112",
+    "203793_4|COMPLETED|0:0|00:56:33|hpcgpu112",
+    "203793_5|COMPLETED|0:0|00:56:01|hpcgpu111",
+    "203793_6|COMPLETED|0:0|00:57:18|hpcgpu112",
+    "203793_7|COMPLETED|0:0|00:55:58|hpcgpu112",
+    "203793_8|COMPLETED|0:0|00:55:17|hpcgpu111"
+  ],
+  "methods": {
+    "off": {
+      "runs": [
+        {
+          "seed": 0,
+          "task_id": "203793_0",
+          "slurm_state": "COMPLETED",
+          "status": "complete",
+          "metrics_file": "off_seed0.json",
+          "test_acc_mean": 50.398328399658205,
+          "test_bacc_mean": 45.771548461914065
+        },
+        {
+          "seed": 1,
+          "task_id": "203793_1",
+          "slurm_state": "COMPLETED",
+          "status": "complete",
+          "metrics_file": "off_seed1.json",
+          "test_acc_mean": 49.40111389160156,
+          "test_bacc_mean": 45.42555694580078
+        },
+        {
+          "seed": 2,
+          "task_id": "203793_2",
+          "slurm_state": "COMPLETED",
+          "status": "complete",
+          "metrics_file": "off_seed2.json",
+          "test_acc_mean": 50.11977691650391,
+          "test_bacc_mean": 45.702764892578124
+        }
+      ],
+      "complete_runs": 3,
+      "test_acc_mean": {
+        "mean": 49.97307306925456,
+        "seed_sample_sd": 0.5145393161537649
+      },
+      "test_bacc_mean": {
+        "mean": 45.63329010009765,
+        "seed_sample_sd": 0.1831600185582153
+      }
+    },
+    "overall": {
+      "runs": [
+        {
+          "seed": 0,
+          "task_id": "203793_3",
+          "slurm_state": "COMPLETED",
+          "status": "complete",
+          "metrics_file": "overall_seed0.json",
+          "test_acc_mean": 47.64902572631836,
+          "test_bacc_mean": 43.43048782348633
+        },
+        {
+          "seed": 1,
+          "task_id": "203793_4",
+          "slurm_state": "COMPLETED",
+          "status": "complete",
+          "metrics_file": "overall_seed1.json",
+          "test_acc_mean": 47.49582138061523,
+          "test_bacc_mean": 43.928323364257814
+        },
+        {
+          "seed": 2,
+          "task_id": "203793_5",
+          "slurm_state": "COMPLETED",
+          "status": "complete",
+          "metrics_file": "overall_seed2.json",
+          "test_acc_mean": 47.178271484375,
+          "test_bacc_mean": 42.9951675415039
+        }
+      ],
+      "complete_runs": 3,
+      "test_acc_mean": {
+        "mean": 47.4410395304362,
+        "seed_sample_sd": 0.2401107607099151
+      },
+      "test_bacc_mean": {
+        "mean": 43.45132624308268,
+        "seed_sample_sd": 0.4669267899610571
+      }
+    },
+    "rival": {
+      "runs": [
+        {
+          "seed": 0,
+          "task_id": "203793_6",
+          "slurm_state": "COMPLETED",
+          "status": "complete",
+          "metrics_file": "rival_seed0.json",
+          "test_acc_mean": 49.529248046875,
+          "test_bacc_mean": 44.81332778930664
+        },
+        {
+          "seed": 1,
+          "task_id": "203793_7",
+          "slurm_state": "COMPLETED",
+          "status": "complete",
+          "metrics_file": "rival_seed1.json",
+          "test_acc_mean": 48.715877532958984,
+          "test_bacc_mean": 44.40808258056641
+        },
+        {
+          "seed": 2,
+          "task_id": "203793_8",
+          "slurm_state": "COMPLETED",
+          "status": "complete",
+          "metrics_file": "rival_seed2.json",
+          "test_acc_mean": 47.51531982421875,
+          "test_bacc_mean": 43.28960418701172
+        }
+      ],
+      "complete_runs": 3,
+      "test_acc_mean": {
+        "mean": 48.586815134684244,
+        "seed_sample_sd": 1.0131483348893973
+      },
+      "test_bacc_mean": {
+        "mean": 44.17033818562825,
+        "seed_sample_sd": 0.7891927534139136
+      }
+    }
+  },
+  "paired": {
+    "rival_minus_off": {
+      "paired_seed_deltas_pp": {
+        "0": {
+          "test_acc_mean": -0.8690803527832074,
+          "test_bacc_mean": -0.9582206726074247
+        },
+        "1": {
+          "test_acc_mean": -0.6852363586425767,
+          "test_bacc_mean": -1.0174743652343707
+        },
+        "2": {
+          "test_acc_mean": -2.604457092285159,
+          "test_bacc_mean": -2.413160705566405
+        }
+      },
+      "acc_delta_mean_pp": -1.3862579345703143,
+      "bacc_delta_mean_pp": -1.4629519144694,
+      "acc_delta_seed_sd_pp": 1.0589884534017653,
+      "meets_followup_threshold": false
+    },
+    "rival_minus_overall": {
+      "paired_seed_deltas_pp": {
+        "0": {
+          "test_acc_mean": 1.8802223205566406,
+          "test_bacc_mean": 1.3828399658203097
+        },
+        "1": {
+          "test_acc_mean": 1.2200561523437514,
+          "test_bacc_mean": 0.47975921630859375
+        },
+        "2": {
+          "test_acc_mean": 0.33704833984374716,
+          "test_bacc_mean": 0.29443664550781534
+        }
+      },
+      "acc_delta_mean_pp": 1.1457756042480465,
+      "bacc_delta_mean_pp": 0.7190119425455729,
+      "acc_delta_seed_sd_pp": 0.7742639624549035,
+      "meets_followup_threshold": true
+    }
+  }
+}

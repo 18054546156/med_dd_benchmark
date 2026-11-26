@@ -35,23 +35,29 @@ def read_metrics(path):
 
 
 def collect(args):
-    accounting = subprocess.run(
-        ["sacct", "-X", "-j", args.job_id, "-n", "-P",
-         "--format=JobID,State,ExitCode,Elapsed,NodeList"],
-        text=True, capture_output=True, check=False,
-    )
-    lines = accounting.stdout.splitlines()
+    if args.accounting_file is not None:
+        accounting_text = args.accounting_file.read_text(encoding="utf-8")
+    else:
+        accounting = subprocess.run(
+            ["sacct", "-X", "-j", args.job_id, "-n", "-P",
+             "--format=JobID,State,ExitCode,Elapsed,NodeList"],
+            text=True, capture_output=True, check=False,
+        )
+        if accounting.returncode:
+            raise SystemExit(f"Slurm accounting query failed: {accounting.stderr.strip()}")
+        accounting_text = accounting.stdout
+    lines = accounting_text.splitlines()
     states = {}
     for line in lines:
         job, state, code, *_ = line.split("|")
         states[job] = (state, code)
+    if not any(f"{args.job_id}_{index}" in states for index in range(len(MODES) * len(SEEDS))):
+        raise SystemExit(f"No accounting rows found for the tasks of array {args.job_id}")
 
     args.out.mkdir(parents=True, exist_ok=True)
     summary = {"job_id": args.job_id, "run_tag": args.run_tag, "training_steps": 20000,
                "eval_epochs": 2000, "expected_seeds": SEEDS, "expected_repeats": REPEATS,
                "sacct": lines, "methods": {}, "paired": {}}
-    if accounting.returncode:
-        summary["accounting_error"] = accounting.stderr.strip()
     finished = {}
     for index, method in enumerate(MODES):
         runs = []
@@ -104,6 +110,8 @@ def collect(args):
     temporary.write_text(content, encoding="utf-8")
     temporary.replace(args.out / "summary.json")
     print(content, end="")
+    if args.require_complete and any(len(runs) != len(SEEDS) for runs in finished.values()):
+        raise SystemExit("Incomplete verified results. Summary retained locally.")
 
 
 if __name__ == "__main__":
@@ -112,4 +120,6 @@ if __name__ == "__main__":
     p.add_argument("--out", type=Path, required=True)
     p.add_argument("--job-id", required=True)
     p.add_argument("--run-tag", default="formal")
+    p.add_argument("--accounting-file", type=Path, help="Saved sacct -X -n -P output from a login node")
+    p.add_argument("--require-complete", action="store_true")
     collect(p.parse_args())

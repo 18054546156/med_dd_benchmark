@@ -15,8 +15,13 @@ set -Eeuo pipefail
 cd "$STUDY_ROOT"
 export GIT_TERMINAL_PROMPT=0 OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1
 report="$STUDY_ROOT/outputs/collected_${PARENT_JOB}_${SLURM_JOB_ID}"
+accounting_args=()
+if [[ -n "${NCFM_ACCOUNTING_FILE:-}" ]]; then
+    accounting_args=(--accounting-file "$NCFM_ACCOUNTING_FILE")
+fi
 /home/xiaoyuxu2/.conda/envs/hopbench-cu128/bin/python scripts/collect_margin_results.py \
-    --study-root "$STUDY_ROOT" --job-id "$PARENT_JOB" --run-tag "${NCFM_RUN_TAG:-formal}" --out "$report"
+    --study-root "$STUDY_ROOT" --job-id "$PARENT_JOB" --run-tag "${NCFM_RUN_TAG:-formal}" \
+    --out "$report" --require-complete "${accounting_args[@]}"
 
 repo="$STUDY_ROOT/collector_repo_${SLURM_JOB_ID}"
 git clone --single-branch --branch codex/ncfm-margin-study \

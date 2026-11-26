@@ -14,8 +14,8 @@
 | [configs](configs/) | 数据集、算法和实验配置 |
 | [scripts](scripts/) | 目标预计算、训练、评估与结果汇总脚本 |
 | [study_results/diagnostics](study_results/diagnostics/) | 已完成的冻结教师诊断和短测记录 |
+| [study_results/margin_20261126](study_results/margin_20261126/) | PathMNIST 正式评估的原始数据、配置和汇总 |
 | [benchmark](benchmark/) | benchmark 工具和参考内容 |
 
-**当前没有新算法的正式 ACC/BACC。** 正式作业运行状态以 Slurm 为准；
-短测用于验证流程，不能作为算法效果。真实数据、checkpoint 和合成数据
-保留在 HPC，不存入本仓库。
+正式比较已完成。竞争类别间隔匹配比整体间隔匹配高 1.15 pp ACC，
+比 NCFM 对照低 1.39 pp。真实数据、checkpoint 和合成数据保留在 HPC。

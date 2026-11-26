@@ -12,7 +12,7 @@ Let $x$ be a real image or a decoded synthetic view of class $c$. For a pretrain
 
 For each teacher and class we use real training images to find the two non-target labels that most frequently achieve the highest non-target logit. For each selected class pair we store the 10th, 25th, and 50th percentiles of the real angular margins. Using the logits for selection captures alternatives from the original teacher decision rule. Using angular margins for matching makes the correction independent of the magnitudes of the teacher features and weights.
 
-During condensation the original decoder converts each synthetic canvas into four views. The base CF objective compares augmented real and synthetic features under the intermediate model sampled by NCFM. The auxiliary objective uses the same iteration's final teacher and unaugmented decoded views, with channel normalization shared with the real targets. It penalizes the mean squared difference between the three synthetic quantiles and the stored targets, averaged over the two competing classes. The auxiliary gradients pass through the frozen teacher and the decoder to the synthetic canvases. The existing calibration update is retained. The auxiliary coefficient is fixed at 100 for the planned comparison.
+During condensation the original decoder converts each synthetic canvas into four views. The base CF objective compares augmented real and synthetic features under the intermediate model sampled by NCFM. The auxiliary objective uses the same iteration's final teacher and unaugmented decoded views, with channel normalization shared with the real targets. It penalizes the mean squared difference between the three synthetic quantiles and the stored targets, averaged over the two competing classes. The auxiliary gradients pass through the frozen teacher and the decoder to the synthetic canvases. The existing calibration update is retained. The auxiliary coefficient was fixed at 100.
 
 The overall-margin control uses the same teacher, views and quantiles for $a_{t,c}(x)-\max_{j\ne c}a_{t,j}(x)$. The base control omits the auxiliary loss. Together the controls test whether the choice of competing label contributes beyond matching the strongest-competitor margin.
 
@@ -34,8 +34,8 @@ We also applied the same crop-and-upsample decoder to 10 real images in each ref
 
 | Method | Test accuracy (%) | Balanced accuracy (%) |
 |---|---:|---:|
-| NCFM | — | — |
-| NCFM + overall-margin matching | — | — |
-| NCFM + class-pair margin matching | — | — |
+| NCFM | 49.97 ± 0.51 | 45.63 ± 0.18 |
+| NCFM + overall-margin matching | 47.44 ± 0.24 | 43.45 ± 0.47 |
+| NCFM + class-pair margin matching | 48.59 ± 1.01 | 44.17 ± 0.79 |
 
-An em dash marks an unavailable measurement.
+Each entry is the mean and sample standard deviation across three distillation seeds after averaging five student evaluations per distilled set. Class-pair matching improved mean test accuracy by 1.15 percentage points over overall-margin matching, with positive paired differences on all three seeds. The NCFM control achieved higher accuracy than either auxiliary objective. Relative to NCFM, class-pair matching reduced mean accuracy by 1.39 points and balanced accuracy by 1.46 points. The frozen-teacher gap therefore motivates a diagnostic, while the tested auxiliary objective at weight 100 did not improve downstream performance on PathMNIST. [Run-level results and configurations](../study_results/margin_20261126/).

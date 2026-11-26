@@ -1,0 +1,62 @@
+distibution_train:
+  backend: nccl
+  init_method: env://
+  workers: 4
+dataset:
+  dataset: pathmnist
+  nclass: 9
+  size: 32
+  data_dir: /project/prj-sis01/xiaoyu_xu/med_dd_project/dd_benchmark/data/prepared
+  load_memory: false
+  batch_real: 128
+  nch: 3
+network:
+  net_type: convnet
+  norm_type: instance
+  depth: 3
+  width: 1.0
+train:
+  evaluation_epochs: 2000
+  epoch_print_freq: 10
+  epoch_eval_interval: 100
+  pertrain_epochs: 60
+  batch_size: 128
+  lr: 0.01
+  adamw_lr: 0.001
+  eval_optimizer: adamw
+  momentum: 0.9
+  weight_decay: 0.0005
+  seed: 1
+  model_num: 20
+augmentation:
+  mixup: cut
+  beta: 1.0
+  mix_p: 0.5
+  rrc: true
+  dsa: true
+  dsa_strategy: color_crop_cutout_flip_scale_rotate
+  aug_type: color_crop_cutout
+optimization:
+  optimizer: adamw
+  lr_scale_adam: 0.1
+  lr_img: 0.01
+  mom_img: 0.5
+  lr_sampling_net: 0.001
+save_path:
+  save_dir: /project/prj-sis01/xuxiaoyu/NCFM_Research/experiments/margin_study_20261126/code/outputs/formal_h100/overall/seed1
+  pretrain_dir: /project/prj-sis01/xuxiaoyu/NCFM_Research/pretrained_models/ncfm/PathMNIST/ConvNetD3_IN_W128
+  pretrain_dir_is_final: true
+condense:
+  ipc: 10
+  num_premodel: 20
+  niter: 20000
+  iter_calib: 1
+  calib_weight: 1
+  sampling_net: false
+  num_freqs: 4096
+  dis_metrics: NCFM
+  factor: 2
+  alpha_for_loss: 0.5
+  beta_for_loss: 0.5
+  decode_type: single
+  teacher_model_epoch: 20
