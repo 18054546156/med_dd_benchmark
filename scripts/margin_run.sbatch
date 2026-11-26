@@ -27,6 +27,7 @@ python="${PYTHON:-/home/xiaoyuxu2/.conda/envs/hopbench-cu128/bin/python}"
 "$python" scripts/write_margin_config.py --mode "$NCFM_MARGIN_MODE" --seed "$seed" \
     --data-root "$DATA_ROOT" --teacher-dir "$TEACHER_DIR" --out-root "$run_dir"
 nvidia-smi -L
+"$python" -c 'import os,torch; assert torch.cuda.device_count()==1, (os.environ.get("CUDA_VISIBLE_DEVICES"),torch.cuda.device_count()); free,total=torch.cuda.mem_get_info(); print("visible",os.environ.get("CUDA_VISIBLE_DEVICES"),torch.cuda.get_device_name(0),"free_GiB",round(free/2**30,2)); assert free>=18*2**30, "allocated GPU is already occupied"'
 "$python" -m torch.distributed.run --standalone --nproc_per_node=1 \
     adapted/ncfm/condense/condense_script.py --config_path "$run_dir/config.yaml" \
     --run_mode Condense --gpu 0 --ipc 10

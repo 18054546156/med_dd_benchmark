@@ -110,7 +110,7 @@ if __name__ == "__main__":
 
     args = args_processor.add_args_from_yaml(args)
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu)
+    os.environ.setdefault("CUDA_VISIBLE_DEVICES", str(args.gpu))
 
     init_script(args)
 

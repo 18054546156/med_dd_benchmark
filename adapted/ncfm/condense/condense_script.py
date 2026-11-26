@@ -68,7 +68,8 @@ if __name__ == '__main__':
 
     args = args_processor.add_args_from_yaml(args)
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu)
+    # Slurm sets the physical allocation; local ranks index that visible list.
+    os.environ.setdefault("CUDA_VISIBLE_DEVICES", str(args.gpu))
 
     init_script(args)
 
