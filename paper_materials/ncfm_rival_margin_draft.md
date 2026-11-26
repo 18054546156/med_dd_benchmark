@@ -26,6 +26,10 @@ We evaluated two archived synthetic sets using three checkpoints each from a tea
 
 We also applied the same crop-and-upsample decoder to 10 real images in each reference block. The real-image q10 decreased by 0.0671 to 0.0804 across the six teacher and artifact combinations, and the q10 of the synthetic views exceeded the decoded-real reference by 0.0738 to 0.0830. Thus applying the decoder to real images moved the margins in the opposite direction to the observed synthetic-versus-real gap. These measurements describe the crop-and-upsample transformation together with inherited crop labels and finite-sample quantile effects. [Decode control](../study_results/diagnostics/rival_margin_crossbank_decode.json).
 
+![Class-pair angular-margin differences across the six teacher and artifact combinations](rival_margin_diagnostics.png)
+
+**Figure 1.** Each row corresponds to one synthetic set and one checkpoint from its held-out teacher bank. Markers show mean differences in q10, averaged over nine classes and two competitors per class. The paired real-image contrast compares the same 10 source images before and after decoding into 40 views. The 40-image original reference matches the number of decoded views. [Vector figure](rival_margin_diagnostics.pdf).
+
 ## Downstream Evaluation
 
 | Method | Test accuracy (%) | Balanced accuracy (%) |
