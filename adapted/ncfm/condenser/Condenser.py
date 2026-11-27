@@ -147,13 +147,14 @@ class Condenser:
         data, target = subsample(data, target, max_size=max_size)
         return data, target
 
-    def get_syndataLoader(self, args, augment=True):
+    def get_syndataLoader(self, args, augment=True, *, medical_normalize=None):
         train_transform, _ = get_train_transform(
             args.dataset,
             augment=augment,
             rrc=args.rrc,
             rrc_size=self.size[0],
             device=args.device,
+            medical_normalize=medical_normalize,
         )
         data_dec = []
         target_dec = []

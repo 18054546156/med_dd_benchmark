@@ -25,7 +25,9 @@ def main_work(args):
             )
         dist.barrier()
 
-    syndataloader = synset.get_syndataLoader(args, args.augment)
+    syndataloader = synset.get_syndataLoader(
+        args, args.augment, medical_normalize=args.synthetic_normalization == "once"
+    )
 
     synset.evaluate(args, syndataloader, val_loader, test_loader=test_loader)
     dist.destroy_process_group()
@@ -72,6 +74,12 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--load_path", type=str, required=True, help="Path to load the synset"
+    )
+    parser.add_argument(
+        "--synthetic_normalization",
+        choices=("once", "raw"),
+        default="once",
+        help="Medical synsets: normalize decoded pixels once, or preserve input values",
     )
     parser.add_argument(
         "--val_repeat",
