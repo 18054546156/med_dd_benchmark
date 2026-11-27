@@ -1,5 +1,6 @@
 import os
 import json
+import random
 import numpy as np
 import torch
 import datetime
@@ -183,6 +184,7 @@ def set_experiment_name_and_save_Dir(
 def set_random_seeds(seed):
 
     if seed > 0:
+        random.seed(seed)
         np.random.seed(seed)
         torch.manual_seed(seed)
         if torch.cuda.is_available():

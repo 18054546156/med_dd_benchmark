@@ -153,7 +153,7 @@ def main():
     parser.add_argument("--tf32", action="store_true", default=True, help="Enable TF32")
     args = parser.parse_args()
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu)
+    os.environ.setdefault("CUDA_VISIBLE_DEVICES", str(args.gpu))
 
     args_processor = ArgsProcessor(args.config_path)
 
