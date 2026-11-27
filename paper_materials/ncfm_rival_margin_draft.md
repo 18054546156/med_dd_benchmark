@@ -32,10 +32,15 @@ We also applied the same crop-and-upsample decoder to 10 real images in each ref
 
 ## Downstream Evaluation
 
+The following scores are from an evaluation that normalized the real splits
+but skipped normalization of the decoded synthetic inputs. A paired
+re-evaluation retrains students on the same saved canvases with matching
+preprocessing. [Evaluation audit and protocol](../study_results/margin_20261126/normalization_reeval/).
+
 | Method | Test accuracy (%) | Balanced accuracy (%) |
 |---|---:|---:|
 | NCFM | 49.97 ± 0.51 | 45.63 ± 0.18 |
 | NCFM + overall-margin matching | 47.44 ± 0.24 | 43.45 ± 0.47 |
 | NCFM + class-pair margin matching | 48.59 ± 1.01 | 44.17 ± 0.79 |
 
-Each entry is the mean and sample standard deviation across three distillation seeds after averaging five student evaluations per distilled set. Class-pair matching improved mean test accuracy by 1.15 percentage points over overall-margin matching, with positive paired differences on all three seeds. The NCFM control achieved higher accuracy than either auxiliary objective. Relative to NCFM, class-pair matching reduced mean accuracy by 1.39 points and balanced accuracy by 1.46 points. The frozen-teacher gap therefore motivates a diagnostic, while the tested auxiliary objective at weight 100 did not improve downstream performance on PathMNIST. [Run-level results and configurations](../study_results/margin_20261126/).
+Each entry is the mean and sample standard deviation across three distillation seeds after averaging five student evaluations per distilled set. Under this input mismatch, class-pair matching scored 1.15 points above overall-margin matching and 1.39 points below the base control. The corrected comparison is needed to assess downstream utility. [Run-level results and configurations](../study_results/margin_20261126/).
