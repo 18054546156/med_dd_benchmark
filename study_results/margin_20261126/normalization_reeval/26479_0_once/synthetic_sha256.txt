@@ -1,0 +1,1 @@
+9c885c049c1b56d6486abc6ad9ca6fa90e6a3875bd48bfab9f698399c7741c9f  /project/prj-sis01/xuxiaoyu/NCFM_Research/results/variants/ncfm/PathMNIST/ConvNetD3_IN_W128/ipc10/seed0/slurm-26479_0/artifacts/condense/pathmnist/ipc10/adamw_lr_img_0.0010_numr_reqs4096_factor2_20260823-0453/distilled_data/data_20000.pt
