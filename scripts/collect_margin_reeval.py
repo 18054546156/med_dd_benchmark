@@ -52,6 +52,10 @@ def run(args):
             100 * mean(row["confusion"][c][c] / sum(row["confusion"][c]) for row in rows)
             for c in range(9)
         ]
+        averages["class_accuracy_contribution_pct"] = [
+            100 * mean(row["confusion"][c][c] / sum(map(sum, row["confusion"])) for row in rows)
+            for c in range(9)
+        ]
         entry.update(averages)
         verified[case], student_records[case] = averages, rows
 
@@ -78,6 +82,10 @@ def run(args):
                 row = compare(verified[a], verified[b], metrics)
                 row["class_recall_pp"] = [x - y for x, y in zip(verified[a]["class_recall_pct"],
                                                                verified[b]["class_recall_pct"])]
+                row["class_accuracy_contribution_pp"] = [
+                    x - y for x, y in zip(verified[a]["class_accuracy_contribution_pct"],
+                                          verified[b]["class_accuracy_contribution_pct"])
+                ]
                 deltas.append({"seed": seed, **row})
         if len(deltas) == len(SEEDS):
             record = {
@@ -89,6 +97,10 @@ def run(args):
                 for label, classes in (("low_margin", low_classes), ("other", others)):
                     record[f"{label}_mean_recall_delta_pp"] = mean(
                         row["class_recall_pp"][c] for c in classes for row in deltas)
+                    record[f"{label}_accuracy_delta_contribution_pp"] = mean(
+                        sum(row["class_accuracy_contribution_pp"][c] for c in classes)
+                        for row in deltas
+                    )
             summary["paired"][f"{mode}_minus_{control}"] = record
     (args.out / "slurm_accounting.txt").write_text(accounting, encoding="utf-8")
     temporary = args.out / ".summary.json.tmp"

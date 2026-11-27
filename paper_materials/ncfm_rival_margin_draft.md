@@ -32,15 +32,12 @@ We also applied the same crop-and-upsample decoder to 10 real images in each ref
 
 ## Downstream Evaluation
 
-The following scores are from an evaluation that normalized the real splits
-but skipped normalization of the decoded synthetic inputs. A paired
-re-evaluation retrains students on the same saved canvases with matching
-preprocessing. [Evaluation audit and protocol](../study_results/margin_20261126/normalization_reeval/).
+Students receive decoded synthetic views with the same channel normalization used for the real validation and test images. We measured the effect of this preprocessing on two saved artifacts under a common validation-selection protocol. Adding normalization increased mean test accuracy from 50.42% to 83.01% on archived artifact 26479_0 and from 47.54% to 80.80% on the current base artifact at seed 0. Each of the five paired student repeats improved on both artifacts. The table reports the nine saved canvases retrained with the corrected evaluator. [Evaluation audit and protocol](../study_results/margin_20261126/normalization_reeval/).
 
 | Method | Test accuracy (%) | Balanced accuracy (%) |
 |---|---:|---:|
-| NCFM | 49.97 ± 0.51 | 45.63 ± 0.18 |
-| NCFM + overall-margin matching | 47.44 ± 0.24 | 43.45 ± 0.47 |
-| NCFM + class-pair margin matching | 48.59 ± 1.01 | 44.17 ± 0.79 |
+| NCFM | 80.85 ± 0.26 | 73.18 ± 0.48 |
+| NCFM + overall-margin matching | 80.62 ± 0.10 | 72.87 ± 0.28 |
+| NCFM + class-pair margin matching | 80.75 ± 0.13 | 73.12 ± 0.21 |
 
-Each entry is the mean and sample standard deviation across three distillation seeds after averaging five student evaluations per distilled set. Under this input mismatch, class-pair matching scored 1.15 points above overall-margin matching and 1.39 points below the base control. The corrected comparison is needed to assess downstream utility. [Run-level results and configurations](../study_results/margin_20261126/).
+Each entry is the mean and sample standard deviation across three distillation seeds after averaging five student evaluations per distilled set. Class-pair matching scored 0.13 percentage points above overall-margin matching and 0.10 points below the base control. The paired accuracy differences relative to the base were +0.03, −0.02, and −0.31 points. On three frozen checkpoints outside the training bank, class-pair matching reduced mean absolute q10 error from 0.02092 to 0.01587. Mean recall across the three classes with the smallest real-data q10 decreased by 0.11 points relative to the base. Matching these quantiles at weight 100 therefore moved the targeted statistic without a consistent downstream accuracy improvement at PathMNIST IPC10. [Run-level results and configurations](../study_results/margin_20261126/normalization_reeval/).
