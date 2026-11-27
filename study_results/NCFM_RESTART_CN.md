@@ -30,3 +30,20 @@ GOIS 单种子记录与旧版本位于 `NCFM_Research/results/variants/gois/` �
 短测使用 1 个教师、2 个预训练 epoch、2 个蒸馏步和 1 个训练两轮的学生，检查完整数据流和评估 JSON。正式重跑用新训练的 20 个教师（种子 7341，每个 60 epoch），三份 IPC10 合成集（种子 7341、7342、7343，每份 20,000 步），每份以五个学生评估 2,000 epoch。沿用 11 月实验的归一化统计和 batch_real=128，使新基线有直接参考。新教师库和 Python 随机种子改变，分数以新日志为准。
 
 重跑的成功判据为 20 对初始化与最终权重、三份 `data_20000.pt`、每份五条基于验证集选模的测试记录，且 7,180 张测试图的混淆矩阵能复算 ACC/BACC。候选调参用训练或验证证据选择，正式测试使用冻结配置。
+
+## 运行记录
+
+HPC 根目录为 `/project/prj-sis01/xuxiaoyu/NCFM_Research/experiments/restart_20261127`，部署代码为 `56354fe`，批处理脚本 SHA256 为 `e5f5862ce17bcbb95073b58ee8857a943cfde3843c46959ce9cdbdc9579a3e6b`。由 `xiaoyuxu2` 在 `gpu-h100` 和 `qos-high-gpu` 提交，每项 1 GPU、8 CPU、32G。
+
+| 作业 | 当前状态 | 日志 | 产物 |
+|---|---|---|---|
+| 206491 | 排队等待 GPU | `logs/smoke-206491.{out,err}` | `outputs/smoke-206491/` |
+| 206492 | 等待短测成功 | `logs/full-206492.{out,err}` | `outputs/full-206492/` |
+
+```bash
+ssh luhpc
+squeue -j 206491,206492
+sacct -X -j 206491,206492 -o JobID,State,Elapsed,ExitCode,NodeList
+```
+
+本地已清理 13 个 Python 字节码缓存。HPC 已清理旧复评的 12 个缓存目录和两份可再生的传输包，释放约 739 MB，且保留 12 份评估 JSON、九份已校验的原始画布、运行日志和历史教师权重。
